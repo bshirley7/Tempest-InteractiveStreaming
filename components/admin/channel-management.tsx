@@ -63,7 +63,10 @@ export function ChannelManagement() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  const categories = [
+  const [customCategory, setCustomCategory] = useState('');
+  const [showCustomCategory, setShowCustomCategory] = useState(false);
+  
+  const predefinedCategories = [
     'Education',
     'News',
     'Sports',
@@ -73,7 +76,15 @@ export function ChannelManagement() {
     'Arts',
     'Music',
     'Discussion',
-    'Events'
+    'Events',
+    'Travel',
+    'Announcements',
+    'Health',
+    'Business',
+    'Lifestyle',
+    'Documentary',
+    'Tutorial',
+    'Other'
   ];
 
   useEffect(() => {
@@ -154,35 +165,60 @@ export function ChannelManagement() {
         setUploadProgress(0);
 
         try {
-          const uploadFormData = new FormData();
-          uploadFormData.append('file', selectedLogoFile);
-          uploadFormData.append('type', 'logo');
-
-          const uploadResponse = await fetch('/api/upload', {
-            method: 'POST',
-            body: uploadFormData,
-          });
-
-          if (!uploadResponse.ok) {
-            const errorText = await uploadResponse.text();
-            throw new Error(`Upload failed: ${errorText}`);
-          }
-
-          const uploadResult = await uploadResponse.json();
+          // For SVG files, prioritize storing content directly in database
+          const isSvg = selectedLogoFile.type === 'image/svg+xml' || selectedLogoFile.name.toLowerCase().endsWith('.svg');
           
-          if (uploadResult.success) {
-            if (selectedLogoFile.type.includes('svg')) {
-              // For SVG files, store the content directly
-              logoSvg = formData.logo_svg || uploadResult.svgContent;
-              logoUrl = uploadResult.url; // Also store the R2 URL as backup
-            } else {
-              // For other image types, use the R2 URL
-              logoUrl = uploadResult.url;
-              logoSvg = '';
+          if (isSvg) {
+            // Use the sanitized SVG content we already have
+            logoSvg = formData.logo_svg;
+            setUploadProgress(50);
+            
+            // Still upload to R2 as backup, but don't block on it
+            try {
+              const uploadFormData = new FormData();
+              uploadFormData.append('file', selectedLogoFile);
+              uploadFormData.append('type', 'logo');
+
+              const uploadResponse = await fetch('/api/upload', {
+                method: 'POST',
+                body: uploadFormData,
+              });
+
+              if (uploadResponse.ok) {
+                const uploadResult = await uploadResponse.json();
+                if (uploadResult.success) {
+                  logoUrl = uploadResult.url; // Store as backup
+                }
+              }
+            } catch (backupError) {
+              console.warn('Backup upload failed, but proceeding with SVG content:', backupError);
             }
             setUploadProgress(100);
           } else {
-            throw new Error(uploadResult.error || 'Upload failed');
+            // For non-SVG images, upload to R2 is required
+            const uploadFormData = new FormData();
+            uploadFormData.append('file', selectedLogoFile);
+            uploadFormData.append('type', 'logo');
+
+            const uploadResponse = await fetch('/api/upload', {
+              method: 'POST',
+              body: uploadFormData,
+            });
+
+            if (!uploadResponse.ok) {
+              const errorText = await uploadResponse.text();
+              throw new Error(`Upload failed: ${errorText}`);
+            }
+
+            const uploadResult = await uploadResponse.json();
+            
+            if (uploadResult.success) {
+              logoUrl = uploadResult.url;
+              logoSvg = ''; // Clear SVG content for non-SVG files
+              setUploadProgress(100);
+            } else {
+              throw new Error(uploadResult.error || 'Upload failed');
+            }
           }
         } catch (uploadError) {
           console.error('Logo upload error:', uploadError);
@@ -215,14 +251,42 @@ export function ChannelManagement() {
 
       if (editingChannel) {
         // Update existing channel
-        const { data, error } = await supabase
+        // First try with all columns
+        let updateData = {
+          ...channelData,
+          updated_at: new Date().toISOString()
+        };
+        
+        let { data, error } = await supabase
           .from('channels')
-          .update({
-            ...channelData,
-            updated_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('id', editingChannel.id)
           .select();
+
+        // If it fails due to schema cache, try removing problematic columns
+        if (error && (error.message.includes('logo_metadata') || error.message.includes('logo_svg') || error.message.includes('logo_url'))) {
+          console.warn('Schema cache issue detected, retrying without logo columns');
+          
+          // Remove all logo-related columns that might not exist
+          const safeUpdateData = { ...updateData };
+          delete safeUpdateData.logo_metadata;
+          delete safeUpdateData.logo_svg;
+          delete safeUpdateData.logo_url;
+          
+          const retryResult = await supabase
+            .from('channels')
+            .update(safeUpdateData)
+            .eq('id', editingChannel.id)
+            .select();
+            
+          data = retryResult.data;
+          error = retryResult.error;
+          
+          // Show warning to user about limited functionality
+          if (!error) {
+            toast.warning('Channel updated but logo changes were not saved. Please run the schema migration.');
+          }
+        }
 
         if (error) {
           console.error('Supabase update error:', error);
@@ -273,6 +337,10 @@ export function ChannelManagement() {
 
   const handleEdit = (channel: Channel) => {
     setEditingChannel(channel);
+    
+    // Check if category is custom (not in predefined list)
+    const isCustomCategory = !predefinedCategories.includes(channel.category);
+    
     setFormData({
       name: channel.name,
       description: channel.description || '',
@@ -282,6 +350,15 @@ export function ChannelManagement() {
       logo_svg: channel.logo_svg || '',
       is_live: channel.is_live
     });
+    
+    if (isCustomCategory) {
+      setShowCustomCategory(true);
+      setCustomCategory(channel.category);
+    } else {
+      setShowCustomCategory(false);
+      setCustomCategory('');
+    }
+    
     setLogoPreview(channel.logo_svg || channel.logo_url || '');
     setIsCreateDialogOpen(true);
   };
@@ -343,32 +420,53 @@ export function ChannelManagement() {
     }
   };
 
+  const sanitizeSvg = (svgContent: string): string => {
+    // Remove dangerous scripts and event handlers
+    return svgContent
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/on\w+\s*=\s*["'][^"']*["']/g, '')
+      .replace(/javascript:/gi, '')
+      .replace(/data:/gi, '');
+  };
+
   const handleLogoFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     // Validate file type
-    if (!file.type.includes('svg') && !file.type.startsWith('image/')) {
-      toast.error('Please select an SVG or image file');
+    const validTypes = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    const isSvg = file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg');
+    const isValidImage = validTypes.includes(file.type);
+    
+    if (!isSvg && !isValidImage) {
+      toast.error('Please select an SVG, PNG, JPG, or WebP file');
       return;
     }
 
-    // Validate file size (max 5MB for logos)
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    // Validate file size (max 2MB for logos to ensure fast loading)
+    const maxSize = 2 * 1024 * 1024; // 2MB
     if (file.size > maxSize) {
-      toast.error('Logo file must be less than 5MB');
+      toast.error('Logo file must be less than 2MB for optimal performance');
       return;
     }
 
     setSelectedLogoFile(file);
 
-    // If it's an SVG, read the content directly
-    if (file.type.includes('svg') || file.name.toLowerCase().endsWith('.svg')) {
+    // Handle SVG files
+    if (isSvg) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        const svgContent = e.target?.result as string;
-        setFormData(prev => ({ ...prev, logo_svg: svgContent, logo_url: '' }));
-        setLogoPreview(svgContent);
+        const rawContent = e.target?.result as string;
+        const sanitizedContent = sanitizeSvg(rawContent);
+        
+        // Validate SVG content
+        if (!sanitizedContent.includes('<svg')) {
+          toast.error('Invalid SVG file');
+          return;
+        }
+        
+        setFormData(prev => ({ ...prev, logo_svg: sanitizedContent, logo_url: '' }));
+        setLogoPreview(sanitizedContent);
       };
       reader.readAsText(file);
     } else {
@@ -386,10 +484,11 @@ export function ChannelManagement() {
   };
 
   const renderChannelLogo = (channel: Channel) => {
+    // Prioritize SVG content for better quality
     if (channel.logo_svg) {
       return (
         <div 
-          className="w-8 h-8 flex items-center justify-center"
+          className="w-8 h-8 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:object-contain"
           dangerouslySetInnerHTML={{ __html: channel.logo_svg }}
         />
       );
@@ -399,6 +498,14 @@ export function ChannelManagement() {
           src={channel.logo_url}
           alt={`${channel.name} logo`}
           className="w-8 h-8 object-contain"
+          onError={(e) => {
+            // Fallback to default icon if image fails to load
+            e.currentTarget.style.display = 'none';
+            e.currentTarget.parentElement?.insertAdjacentHTML(
+              'afterbegin', 
+              '<svg class="h-5 w-5 text-primary" fill="currentColor" viewBox="0 0 24 24"><path d="M21 6.5l-1 .5v3l1 .5v7.5a1 1 0 01-1 1H4a1 1 0 01-1-1V11l1-.5v-3L3 6.5V4a1 1 0 011-1h16a1 1 0 011 1v2.5zM19 8H5v1l2 1v9h10v-9l2-1V8z"/></svg>'
+            );
+          }}
         />
       );
     } else {
@@ -417,9 +524,37 @@ export function ChannelManagement() {
       'Arts': 'bg-pink-500/20 text-pink-700 dark:text-pink-300',
       'Music': 'bg-orange-500/20 text-orange-700 dark:text-orange-300',
       'Discussion': 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300',
-      'Events': 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+      'Events': 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300',
+      'Travel': 'bg-teal-500/20 text-teal-700 dark:text-teal-300',
+      'Announcements': 'bg-amber-500/20 text-amber-700 dark:text-amber-300',
+      'Health': 'bg-rose-500/20 text-rose-700 dark:text-rose-300',
+      'Business': 'bg-slate-500/20 text-slate-700 dark:text-slate-300',
+      'Lifestyle': 'bg-violet-500/20 text-violet-700 dark:text-violet-300',
+      'Documentary': 'bg-stone-500/20 text-stone-700 dark:text-stone-300',
+      'Tutorial': 'bg-lime-500/20 text-lime-700 dark:text-lime-300'
     };
-    return colors[category] || 'bg-gray-500/20 text-gray-700 dark:text-gray-300';
+    
+    // For custom categories, generate a color based on the category name
+    if (!colors[category]) {
+      // Simple hash function to generate consistent colors for custom categories
+      let hash = 0;
+      for (let i = 0; i < category.length; i++) {
+        hash = category.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const colorOptions = [
+        'bg-blue-500/20 text-blue-700 dark:text-blue-300',
+        'bg-green-500/20 text-green-700 dark:text-green-300',
+        'bg-purple-500/20 text-purple-700 dark:text-purple-300',
+        'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300',
+        'bg-pink-500/20 text-pink-700 dark:text-pink-300',
+        'bg-indigo-500/20 text-indigo-700 dark:text-indigo-300',
+        'bg-red-500/20 text-red-700 dark:text-red-300',
+        'bg-orange-500/20 text-orange-700 dark:text-orange-300'
+      ];
+      return colorOptions[Math.abs(hash) % colorOptions.length];
+    }
+    
+    return colors[category];
   };
 
   if (loading) {
@@ -452,6 +587,8 @@ export function ChannelManagement() {
               });
               setSelectedLogoFile(null);
               setLogoPreview('');
+              setShowCustomCategory(false);
+              setCustomCategory('');
             }}>
               <Plus className="h-4 w-4 mr-2" />
               Create Channel
@@ -486,22 +623,64 @@ export function ChannelManagement() {
               </div>
               <div>
                 <Label htmlFor="category">Category</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) => setFormData({ ...formData, category: value })}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
+                {!showCustomCategory ? (
+                  <Select
+                    value={formData.category}
+                    onValueChange={(value) => {
+                      if (value === 'custom') {
+                        setShowCustomCategory(true);
+                        setFormData({ ...formData, category: '' });
+                      } else {
+                        setFormData({ ...formData, category: value });
+                      }
+                    }}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {predefinedCategories.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="custom" className="font-medium text-primary">
+                        + Add Custom Category
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                        id="customCategory"
+                        value={customCategory}
+                        onChange={(e) => {
+                          setCustomCategory(e.target.value);
+                          setFormData({ ...formData, category: e.target.value });
+                        }}
+                        placeholder="Enter custom category name"
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setShowCustomCategory(false);
+                          setCustomCategory('');
+                          setFormData({ ...formData, category: '' });
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Enter a custom category name (e.g., Travel, Announcements, etc.)
+                    </p>
+                  </div>
+                )}
               </div>
               <div>
                 <Label htmlFor="thumbnail">Thumbnail URL</Label>
@@ -517,17 +696,31 @@ export function ChannelManagement() {
               <div>
                 <Label htmlFor="logo">Channel Logo</Label>
                 <div className="space-y-3">
-                  <Input
-                    id="logo"
-                    type="file"
-                    accept=".svg,.png,.jpg,.jpeg,.webp"
-                    onChange={handleLogoFileSelect}
-                    className="cursor-pointer"
-                    disabled={uploadingLogo}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Upload an SVG or image file (max 5MB). Files will be stored on Cloudflare R2.
-                  </p>
+                  <div className="flex items-center space-x-3">
+                    <Input
+                      id="logo"
+                      type="file"
+                      accept=".svg,.png,.jpg,.jpeg,.webp,image/svg+xml,image/png,image/jpeg,image/webp"
+                      onChange={handleLogoFileSelect}
+                      className="cursor-pointer flex-1"
+                      disabled={uploadingLogo}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById('logo')?.click()}
+                      disabled={uploadingLogo}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Browse
+                    </Button>
+                  </div>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p>• <strong>SVG files</strong> are recommended for crisp logos at any size</p>
+                    <p>• PNG, JPG, WebP also supported (max 2MB)</p>
+                    <p>• SVG content is stored in database, images uploaded to Cloudflare R2</p>
+                  </div>
                   
                   {/* Upload Progress */}
                   {uploadingLogo && (
@@ -543,26 +736,40 @@ export function ChannelManagement() {
                   {/* Logo Preview */}
                   {logoPreview && (
                     <div className="flex items-center space-x-3 p-3 border rounded-lg bg-muted/50">
-                      <div className="w-12 h-12 flex items-center justify-center border rounded bg-background">
+                      <div className="w-16 h-16 flex items-center justify-center border rounded bg-background">
                         {formData.logo_svg ? (
                           <div 
-                            className="w-10 h-10 flex items-center justify-center"
+                            className="w-14 h-14 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:object-contain"
                             dangerouslySetInnerHTML={{ __html: formData.logo_svg }}
                           />
                         ) : (
                           <img
                             src={logoPreview}
                             alt="Logo preview"
-                            className="w-10 h-10 object-contain"
+                            className="w-14 h-14 object-contain"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.parentElement?.insertAdjacentHTML(
+                                'afterbegin', 
+                                '<div class="w-14 h-14 flex items-center justify-center text-muted-foreground"><svg class="h-8 w-8" fill="currentColor" viewBox="0 0 24 24"><path d="M21 6.5l-1 .5v3l1 .5v7.5a1 1 0 01-1 1H4a1 1 0 01-1-1V11l1-.5v-3L3 6.5V4a1 1 0 011-1h16a1 1 0 011 1v2.5zM19 8H5v1l2 1v9h10v-9l2-1V8z"/></svg></div>'
+                              );
+                            }}
                           />
                         )}
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-medium">Logo Preview</p>
+                        <p className="text-sm font-medium">
+                          {formData.logo_svg ? 'SVG Logo' : 'Image Logo'} Preview
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           {selectedLogoFile?.name || 'Current logo'} 
                           {selectedLogoFile && ` (${(selectedLogoFile.size / 1024).toFixed(1)} KB)`}
                         </p>
+                        {formData.logo_svg && (
+                          <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                            ✓ Vector format - scales perfectly
+                          </p>
+                        )}
                       </div>
                       <Button
                         type="button"
@@ -570,6 +777,7 @@ export function ChannelManagement() {
                         size="sm"
                         onClick={clearLogo}
                         disabled={uploadingLogo}
+                        title="Remove logo"
                       >
                         <X className="h-4 w-4" />
                       </Button>

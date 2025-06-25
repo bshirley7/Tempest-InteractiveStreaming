@@ -124,12 +124,33 @@ export function MiniVideoPlayer({
 
             {/* Channel Info */}
             <div className="absolute top-3 right-3 flex items-center space-x-2">
-              <div className="bg-black/70 backdrop-blur rounded px-2 py-1 flex items-center space-x-1">
-                <img
-                  src={channel.logo}
-                  alt={channel.name}
-                  className="w-4 h-4 rounded"
-                />
+              <div className="bg-black/70 backdrop-blur rounded px-2 py-1 flex items-center space-x-2">
+                <div className="w-6 h-6 rounded overflow-hidden bg-white/10 flex items-center justify-center">
+                  {channel.logo ? (
+                    <img
+                      src={channel.logo}
+                      alt={channel.name}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        // Fallback to channel name if logo fails to load
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent) {
+                          parent.innerHTML = `
+                            <div class="w-full h-full flex items-center justify-center text-white font-bold text-[8px] text-center leading-none">
+                              ${channel.name.split(' ').map(word => word[0]).join('').substring(0, 3)}
+                            </div>
+                          `;
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white font-bold text-[8px] text-center leading-none">
+                      {channel.name.split(' ').map(word => word[0]).join('').substring(0, 3)}
+                    </div>
+                  )}
+                </div>
                 <span className="text-white text-xs font-medium">{channel.number}</span>
                 {channel.isHD && (
                   <Badge variant="secondary" className="text-xs px-1">HD</Badge>

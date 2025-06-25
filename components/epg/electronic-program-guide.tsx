@@ -18,34 +18,18 @@ import {
   Radio,
   Star,
   Users,
-  Settings
+  Settings,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CurrentTimeIndicator } from './current-time-indicator';
+import { fetchChannels, EPGChannel, EPGProgram } from '@/lib/services/channel-service';
 
-interface Program {
-  id: string;
-  title: string;
-  description: string;
-  startTime: Date;
-  endTime: Date;
-  category: string;
-  rating?: number;
-  isLive: boolean;
-  isNew?: boolean;
-  isRepeat?: boolean;
-  thumbnail?: string;
-}
-
-interface Channel {
-  id: string;
-  name: string;
-  number: string;
-  logo: string;
-  category: string;
-  isHD: boolean;
-  programs: Program[];
-  currentViewers?: number;
-}
+// Use types from the channel service
+type Program = EPGProgram;
+type Channel = EPGChannel;
 
 interface EPGProps {
   onChannelSelect: (channelId: string) => void;
@@ -59,6 +43,7 @@ export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPG
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const categories = [
@@ -81,71 +66,20 @@ export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPG
     }
     setTimeSlots(slots);
 
-    // Mock channel data with realistic programming
-    const mockChannels: Channel[] = [
-      {
-        id: 'campus-news',
-        name: 'Campus News Network',
-        number: '001',
-        logo: 'https://images.pexels.com/photos/1181273/pexels-photo-1181273.jpeg?auto=compress&cs=tinysrgb&w=100',
-        category: 'news',
-        isHD: true,
-        currentViewers: 1247,
-        programs: generatePrograms('campus-news', slots)
-      },
-      {
-        id: 'edu-channel',
-        name: 'University Education',
-        number: '002',
-        logo: 'https://images.pexels.com/photos/2280571/pexels-photo-2280571.jpeg?auto=compress&cs=tinysrgb&w=100',
-        category: 'education',
-        isHD: true,
-        currentViewers: 892,
-        programs: generatePrograms('edu-channel', slots)
-      },
-      {
-        id: 'sports-network',
-        name: 'Campus Sports',
-        number: '003',
-        logo: 'https://images.pexels.com/photos/1752757/pexels-photo-1752757.jpeg?auto=compress&cs=tinysrgb&w=100',
-        category: 'sports',
-        isHD: true,
-        currentViewers: 3421,
-        programs: generatePrograms('sports-network', slots)
-      },
-      {
-        id: 'arts-culture',
-        name: 'Arts & Culture',
-        number: '004',
-        logo: 'https://images.pexels.com/photos/1193743/pexels-photo-1193743.jpeg?auto=compress&cs=tinysrgb&w=100',
-        category: 'entertainment',
-        isHD: true,
-        currentViewers: 567,
-        programs: generatePrograms('arts-culture', slots)
-      },
-      {
-        id: 'student-life',
-        name: 'Student Life TV',
-        number: '005',
-        logo: 'https://images.pexels.com/photos/1181406/pexels-photo-1181406.jpeg?auto=compress&cs=tinysrgb&w=100',
-        category: 'entertainment',
-        isHD: true,
-        currentViewers: 234,
-        programs: generatePrograms('student-life', slots)
-      },
-      {
-        id: 'research-docs',
-        name: 'Research & Docs',
-        number: '006',
-        logo: 'https://images.pexels.com/photos/159490/yale-university-landscape-universities-schools-159490.jpeg?auto=compress&cs=tinysrgb&w=100',
-        category: 'documentary',
-        isHD: true,
-        currentViewers: 445,
-        programs: generatePrograms('research-docs', slots)
+    // Fetch channels from Supabase
+    const loadChannels = async () => {
+      try {
+        setLoading(true);
+        const channelData = await fetchChannels();
+        setChannels(channelData);
+      } catch (error) {
+        console.error('Failed to load channels:', error);
+      } finally {
+        setLoading(false);
       }
-    ];
+    };
 
-    setChannels(mockChannels);
+    loadChannels();
   }, []);
 
   // Update current time every minute
@@ -158,55 +92,6 @@ export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPG
     return () => clearInterval(timer);
   }, []);
 
-  const generatePrograms = (channelId: string, slots: Date[]): Program[] => {
-    const programTemplates = {
-      'campus-news': [
-        'Campus Morning Update', 'Breaking News', 'Student Government Live', 
-        'Weather & Traffic', 'Faculty Spotlight', 'Campus Events Today'
-      ],
-      'edu-channel': [
-        'Physics 101 Lecture', 'Chemistry Lab Demo', 'Mathematics Tutorial', 
-        'Computer Science Workshop', 'Biology Seminar', 'Engineering Design'
-      ],
-      'sports-network': [
-        'Basketball Game Live', 'Soccer Match', 'Swimming Championship', 
-        'Track & Field', 'Tennis Tournament', 'Sports Highlights'
-      ],
-      'arts-culture': [
-        'Art Gallery Tour', 'Music Performance', 'Theater Production', 
-        'Dance Showcase', 'Poetry Reading', 'Cultural Festival'
-      ],
-      'student-life': [
-        'Dorm Life Documentary', 'Study Tips', 'Career Fair Coverage', 
-        'Club Spotlight', 'Campus Tour', 'Student Interviews'
-      ],
-      'research-docs': [
-        'Climate Research', 'Medical Breakthroughs', 'Space Exploration', 
-        'Technology Innovation', 'Historical Archives', 'Scientific Discovery'
-      ]
-    };
-
-    const templates = programTemplates[channelId as keyof typeof programTemplates] || programTemplates['campus-news'];
-    
-    return slots.slice(0, -1).map((slot, index) => {
-      const endTime = new Date(slot);
-      endTime.setMinutes(endTime.getMinutes() + 30);
-      
-      return {
-        id: `${channelId}-${index}`,
-        title: templates[index % templates.length],
-        description: `Join us for ${templates[index % templates.length].toLowerCase()} featuring the latest updates and insights.`,
-        startTime: slot,
-        endTime: endTime,
-        category: channelId.includes('news') ? 'news' : channelId.includes('edu') ? 'education' : 'entertainment',
-        rating: Math.random() > 0.5 ? Number((Math.random() * 2 + 3).toFixed(1)) : undefined,
-        isLive: index === 0, // First program is live
-        isNew: Math.random() > 0.7,
-        isRepeat: Math.random() > 0.8,
-        thumbnail: `https://images.pexels.com/photos/${1000000 + Math.floor(Math.random() * 1000000)}/pexels-photo-${1000000 + Math.floor(Math.random() * 1000000)}.jpeg?auto=compress&cs=tinysrgb&w=300`
-      };
-    });
-  };
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -249,11 +134,14 @@ export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPG
     }
   };
 
-  // Don't render until currentTime is initialized
-  if (!currentTime) {
+  // Don't render until currentTime is initialized and channels are loaded
+  if (!currentTime || loading) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <span className="ml-3 text-sm text-muted-foreground">
+          {loading ? 'Loading channels...' : 'Initializing...'}
+        </span>
       </div>
     );
   }
@@ -312,23 +200,51 @@ export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPG
               const nextProgram = channel.programs.find(p => p.startTime > currentTime);
               
               return (
-                <Card 
+                <motion.div
                   key={channel.id}
-                  className={cn(
-                    "cursor-pointer transition-all hover:shadow-md",
-                    selectedChannel === channel.id && "ring-2 ring-primary"
-                  )}
-                  onClick={() => onChannelSelect(channel.id)}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
                 >
+                  <Card 
+                    className={cn(
+                      "cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/20",
+                      "hover:scale-[1.02] border border-white/10 backdrop-blur-sm",
+                      "bg-gradient-to-br from-gray-800/40 via-gray-700/30 to-gray-800/40",
+                      "hover:bg-gradient-to-br hover:from-purple-500/10 hover:via-indigo-500/10 hover:to-blue-500/10",
+                      selectedChannel === channel.id && "ring-2 ring-purple-500/50 bg-gradient-to-r from-purple-600/20 via-indigo-500/15 to-blue-500/20"
+                    )}
+                    onClick={() => onChannelSelect(channel.id)}
+                  >
                   <CardContent className="p-4">
                     <div className="flex items-start space-x-4">
                       {/* Channel Logo */}
-                      <div className="relative">
-                        <img
-                          src={channel.logo}
-                          alt={channel.name}
-                          className="w-16 h-16 rounded-lg object-cover"
-                        />
+                      <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-muted/50 flex items-center justify-center">
+                        {channel.logo ? (
+                          <img
+                            src={channel.logo}
+                            alt={channel.name}
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              // Fallback to channel name if logo fails to load
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const parent = target.parentElement;
+                              if (parent) {
+                                parent.innerHTML = `
+                                  <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-bold text-xs text-center p-1">
+                                    ${channel.name}
+                                  </div>
+                                  <div class="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs px-1 rounded">${channel.number}</div>
+                                `;
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-bold text-xs text-center p-1">
+                            {channel.name}
+                          </div>
+                        )}
                         <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs px-1 rounded">
                           {channel.number}
                         </div>
@@ -338,7 +254,11 @@ export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPG
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2 mb-2">
                           <h3 className="font-semibold text-lg">{channel.name}</h3>
-                          {channel.isHD && <Badge variant="secondary">HD</Badge>}
+                          {channel.isHD && (
+                            <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/25">
+                              HD
+                            </span>
+                          )}
                           <div className="flex items-center space-x-1 text-sm text-muted-foreground">
                             <Users className="h-3 w-3" />
                             <span>{channel.currentViewers?.toLocaleString()}</span>
@@ -349,10 +269,14 @@ export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPG
                         {currentProgram && (
                           <div className="mb-3">
                             <div className="flex items-center space-x-2 mb-1">
-                              <Badge variant="destructive" className="animate-pulse">
+                              <motion.div
+                                className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 text-white shadow-lg shadow-purple-500/30"
+                                animate={{ scale: [1, 1.05, 1] }}
+                                transition={{ duration: 2, repeat: Infinity }}
+                              >
                                 <Radio className="h-3 w-3 mr-1" />
                                 LIVE
-                              </Badge>
+                              </motion.div>
                               <span className="text-sm text-muted-foreground">
                                 {formatTime(currentProgram.startTime)} - {formatTime(currentProgram.endTime)}
                               </span>
@@ -395,6 +319,7 @@ export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPG
                     </div>
                   </CardContent>
                 </Card>
+                </motion.div>
               );
             })}
           </div>
@@ -465,33 +390,64 @@ export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPG
       <div className="flex-1 overflow-hidden">
         <div className="flex h-full">
           {/* Channel Column */}
-          <div className="w-48 border-r bg-muted/30">
+          <div className="w-56 border-r bg-muted/30">
             <div className="h-12 border-b bg-background flex items-center px-3">
               <span className="font-semibold text-sm">Channels</span>
             </div>
             <ScrollArea className="h-[calc(100%-3rem)]">
               {filteredChannels.map((channel) => (
-                <div
+                <motion.div
                   key={channel.id}
                   className={cn(
-                    "h-20 border-b p-3 cursor-pointer hover:bg-muted/50 transition-colors",
-                    selectedChannel === channel.id && "bg-primary/10 border-primary/50"
+                    "h-20 border-b p-2 cursor-pointer transition-all duration-300 group",
+                    "hover:bg-gradient-to-r hover:from-purple-500/8 hover:via-indigo-500/8 hover:to-blue-500/8",
+                    "hover:scale-[1.005]",
+                    selectedChannel === channel.id && "bg-gradient-to-r from-purple-600/20 via-indigo-500/15 to-blue-500/20 border-purple-500/50"
                   )}
                   onClick={() => onChannelSelect(channel.id)}
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  whileHover={{ scale: 1.005, transition: { duration: 0.2 } }}
                 >
-                  <div className="flex items-center space-x-2">
-                    <img
-                      src={channel.logo}
-                      alt={channel.name}
-                      className="w-8 h-8 rounded object-cover"
-                    />
+                  <div className="flex items-center space-x-3 h-full">
+                    {/* Enhanced Logo Display */}
+                    <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-muted/50 flex items-center justify-center flex-shrink-0">
+                      {channel.logo ? (
+                        <img
+                          src={channel.logo}
+                          alt={channel.name}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            // Fallback to channel name if logo fails to load
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.innerHTML = `
+                                <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-bold text-[10px] text-center p-1 leading-tight">
+                                  ${channel.name}
+                                </div>
+                              `;
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-bold text-[10px] text-center p-1 leading-tight">
+                          {channel.name}
+                        </div>
+                      )}
+                    </div>
+                    
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-1">
+                      <div className="flex items-center space-x-1 mb-1">
                         <span className="text-xs font-mono text-muted-foreground">
                           {channel.number}
                         </span>
                         {channel.isHD && (
-                          <Badge variant="secondary" className="text-xs px-1">HD</Badge>
+                          <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/25">
+                            HD
+                          </span>
                         )}
                       </div>
                       <p className="font-medium text-sm truncate">{channel.name}</p>
@@ -501,7 +457,7 @@ export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPG
                       </div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </ScrollArea>
           </div>
@@ -531,7 +487,13 @@ export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPG
             <ScrollArea className="h-[calc(100%-3rem)]">
               <div className="relative">
                 {filteredChannels.map((channel, channelIndex) => (
-                  <div key={channel.id} className="h-20 border-b flex">
+                  <motion.div 
+                    key={channel.id} 
+                    className="h-20 border-b flex group hover:bg-gradient-to-r hover:from-purple-500/5 hover:via-indigo-500/5 hover:to-blue-500/5 transition-all duration-300"
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: channelIndex * 0.05 }}
+                  >
                     {channel.programs.map((program, programIndex) => {
                       const duration = program.endTime.getTime() - program.startTime.getTime();
                       const width = (duration / (30 * 60 * 1000)) * 128; // 30 minutes = 128px
@@ -539,15 +501,23 @@ export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPG
                       const progress = isCurrentProgram ? getProgressPercentage(program) : 0;
 
                       return (
-                        <div
+                        <motion.div
                           key={program.id}
                           className={cn(
-                            "border-r p-2 cursor-pointer hover:bg-muted/50 transition-colors relative overflow-hidden",
-                            isCurrentProgram && "bg-primary/5 border-primary/50",
-                            program.isLive && "ring-1 ring-primary"
+                            "border-r p-2 cursor-pointer transition-all duration-300 relative overflow-hidden group",
+                            "hover:scale-[1.02] hover:shadow-lg hover:shadow-purple-500/20",
+                            "border border-white/10 backdrop-blur-sm rounded-lg m-0.5",
+                            isCurrentProgram 
+                              ? "bg-gradient-to-br from-purple-600/30 via-indigo-500/20 to-blue-500/30 border-purple-500/50"
+                              : "bg-gradient-to-br from-gray-800/40 via-gray-700/30 to-gray-800/40 hover:bg-gradient-to-br hover:from-purple-500/10 hover:via-indigo-500/10 hover:to-blue-500/10",
+                            program.isLive && "ring-2 ring-purple-500/50"
                           )}
                           style={{ width: `${width}px`, minWidth: `${width}px` }}
                           onClick={() => onChannelSelect(channel.id)}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.3, delay: programIndex * 0.05 }}
+                          whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
                         >
                           {/* Progress bar for current program */}
                           {isCurrentProgram && (
@@ -557,9 +527,13 @@ export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPG
 
                           <div className="flex items-center space-x-1 mb-1">
                             {program.isLive && (
-                              <Badge variant="destructive" className="text-xs px-1 animate-pulse">
-                                LIVE
-                              </Badge>
+                              <motion.div
+                                className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 text-white shadow-lg shadow-purple-500/30"
+                                animate={{ scale: [1, 1.05, 1] }}
+                                transition={{ duration: 2, repeat: Infinity }}
+                              >
+                                ● LIVE
+                              </motion.div>
                             )}
                             {program.isNew && (
                               <Badge variant="secondary" className="text-xs px-1">NEW</Badge>
@@ -583,21 +557,18 @@ export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPG
                           <div className="absolute top-1 right-1 text-xs text-muted-foreground">
                             {formatTime(program.startTime)}
                           </div>
-                        </div>
+                        </motion.div>
                       );
                     })}
-                  </div>
+                  </motion.div>
                 ))}
 
                 {/* Current Time Indicator */}
-                <div 
-                  className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10 pointer-events-none"
-                  style={{ 
-                    left: `${((currentTime.getMinutes() / 60) * 128) + (currentTime.getHours() - timeSlots[0].getHours()) * 128}px` 
-                  }}
-                >
-                  <div className="absolute -top-2 -left-1 w-3 h-3 bg-red-500 rounded-full" />
-                </div>
+                <CurrentTimeIndicator 
+                  startTime={timeSlots[0]} 
+                  endTime={timeSlots[timeSlots.length - 1]} 
+                  className="bg-gradient-to-b from-purple-500 via-indigo-500 to-blue-500"
+                />
               </div>
             </ScrollArea>
           </div>

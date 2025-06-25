@@ -9,6 +9,7 @@ import { InteractionManagement } from './interaction-management';
 import { UpdatesManagement } from './updates-management';
 import { AnalyticsDashboard } from './analytics-dashboard';
 import { ContentLibrarySync } from './content-library-sync';
+import BulkUploadPage from '../../app/admin/bulk-upload/page';
 import { 
   Tv, 
   Video, 
@@ -18,7 +19,8 @@ import {
   Users,
   Play,
   Clock,
-  TrendingUp
+  TrendingUp,
+  Upload
 } from 'lucide-react';
 
 export function AdminDashboard() {
@@ -44,9 +46,10 @@ export function AdminDashboard() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="channels">Channels</TabsTrigger>
+          <TabsTrigger value="bulk-upload">Bulk Upload</TabsTrigger>
           <TabsTrigger value="updates">Updates</TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
           <TabsTrigger value="interactions">Interactions</TabsTrigger>
@@ -188,12 +191,12 @@ export function AdminDashboard() {
                     <p className="text-xs text-muted-foreground">Manage campus announcements</p>
                   </button>
                   <button 
-                    onClick={() => setActiveTab('content')}
+                    onClick={() => setActiveTab('bulk-upload')}
                     className="p-4 border rounded-lg hover:bg-muted transition-colors text-left"
                   >
-                    <Video className="h-6 w-6 mb-2 text-primary" />
-                    <p className="font-medium">Upload Content</p>
-                    <p className="text-xs text-muted-foreground">Add new video content</p>
+                    <Upload className="h-6 w-6 mb-2 text-primary" />
+                    <p className="font-medium">Bulk Upload</p>
+                    <p className="text-xs text-muted-foreground">Upload multiple videos with metadata</p>
                   </button>
                   <button 
                     onClick={() => setActiveTab('interactions')}
@@ -211,6 +214,10 @@ export function AdminDashboard() {
 
         <TabsContent value="channels">
           <ChannelManagement />
+        </TabsContent>
+
+        <TabsContent value="bulk-upload">
+          <BulkUploadPage />
         </TabsContent>
 
         <TabsContent value="updates">

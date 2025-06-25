@@ -221,7 +221,7 @@ export async function updateStreamVideo(
 }
 
 /**
- * Get direct upload URL for Stream
+ * Get direct upload URL for Stream with HD quality settings
  */
 export async function getStreamUploadUrl(metadata?: {
   name?: string;
@@ -233,16 +233,112 @@ export async function getStreamUploadUrl(metadata?: {
   uploadURL: string;
   uid: string;
 }> {
+  const requestBody: any = {
+    maxDurationSeconds: 21600, // 6 hours max
+  };
+
+  // Add metadata if provided
+  if (metadata?.name) {
+    requestBody.meta = { name: metadata.name };
+  }
+  
+  if (metadata?.requireSignedURLs !== undefined) {
+    requestBody.requireSignedURLs = metadata.requireSignedURLs;
+  }
+  
+  if (metadata?.allowedOrigins) {
+    requestBody.allowedOrigins = metadata.allowedOrigins;
+  }
+  
+  if (metadata?.thumbnailTimestampPct !== undefined) {
+    requestBody.thumbnailTimestampPct = metadata.thumbnailTimestampPct;
+  }
+  
+  if (metadata?.watermark) {
+    requestBody.watermark = { uid: metadata.watermark };
+  }
+
   const response = await streamApiRequest('/direct_upload', {
     method: 'POST',
-    body: JSON.stringify({
-      maxDurationSeconds: 21600, // 6 hours max
-      ...metadata,
-    }),
+    body: JSON.stringify(requestBody),
   });
   
   const data = await response.json();
   return data.result;
+}
+
+/**
+ * Get video quality information and available formats
+ */
+export async function getVideoQualityInfo(videoId: string): Promise<{
+  availableQualities: string[];
+  originalResolution: { width: number; height: number };
+  hasHD: boolean;
+  hlsUrl: string;
+  dashUrl: string;
+}> {
+  const video = await getStreamVideo(videoId);
+  
+  // Extract quality information
+  const availableQualities: string[] = [];
+  const hasHD = video.input.height >= 720;
+  
+  // Cloudflare Stream automatically generates these qualities based on input resolution:
+  if (video.input.height >= 240) availableQualities.push('240p');
+  if (video.input.height >= 360) availableQualities.push('360p');
+  if (video.input.height >= 480) availableQualities.push('480p');
+  if (video.input.height >= 720) availableQualities.push('720p');
+  if (video.input.height >= 1080) availableQualities.push('1080p');
+  if (video.input.height >= 1440) availableQualities.push('1440p');
+  if (video.input.height >= 2160) availableQualities.push('4K');
+  
+  return {
+    availableQualities,
+    originalResolution: video.input,
+    hasHD,
+    hlsUrl: video.playback.hls,
+    dashUrl: video.playback.dash
+  };
+}
+
+/**
+ * Check if account supports HD streaming
+ */
+export async function checkHDStreamingSupport(): Promise<{
+  supportsHD: boolean;
+  maxResolution: string;
+  recommendations: string[];
+}> {
+  try {
+    // Get account details to check limits
+    const response = await streamApiRequest('');
+    const videos = await response.json();
+    
+    const recommendations: string[] = [];
+    
+    // Check if we have any HD videos already
+    const hasHDVideos = videos.result?.some((video: StreamVideo) => 
+      video.input.height >= 720
+    );
+    
+    if (!hasHDVideos) {
+      recommendations.push('Upload videos with 720p (1280x720) or higher resolution');
+      recommendations.push('Ensure source videos are high quality before upload');
+    }
+    
+    return {
+      supportsHD: true, // Cloudflare Stream supports HD on all plans
+      maxResolution: '4K (3840x2160)',
+      recommendations
+    };
+  } catch (error) {
+    console.error('Error checking HD support:', error);
+    return {
+      supportsHD: true,
+      maxResolution: 'Unknown',
+      recommendations: ['Check your Cloudflare Stream configuration']
+    };
+  }
 }
 
 /**

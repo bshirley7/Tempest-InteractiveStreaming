@@ -10,11 +10,23 @@ import { auth } from '@clerk/nextjs/server';
 import { syncContentLibrary, getSyncStatus, getOrphanedVideos } from '@/lib/content-library-sync';
 import { createClient } from '@/lib/supabase/server';
 
+// Simple admin user IDs for immediate access (matches admin page)
+const ADMIN_USER_IDS: string[] = [
+  'user_2y232PRIhXVR9omfFBhPQdG6DZU',
+  'user_2ykxfPwP3yMZH0HbqadSs4FaDXT'
+];
+
 /**
  * Check if user is admin
  */
 async function isUserAdmin(clerkUserId: string): Promise<boolean> {
   try {
+    // Check simple admin list first
+    if (ADMIN_USER_IDS.includes(clerkUserId)) {
+      return true;
+    }
+
+    // Check Supabase user role as fallback
     const supabase = createClient();
     const { data: user } = await supabase
       .from('users')
@@ -35,7 +47,7 @@ async function isUserAdmin(clerkUserId: string): Promise<boolean> {
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -85,7 +97,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     // Check authentication
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },

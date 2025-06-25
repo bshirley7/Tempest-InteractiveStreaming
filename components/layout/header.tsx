@@ -38,19 +38,15 @@ export function Header() {
   // Don't render user-specific content until mounted
   if (!mounted) {
     return (
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-2">
-              <img 
-                src="/logo.svg" 
-                alt="Tempest" 
-                className="h-6"
-              />
-            </div>
-            <div className="flex items-center space-x-3">
-              <ThemeToggle />
-            </div>
+      <header className="fixed top-0 left-0 right-0 z-50">
+        <div className="absolute inset-0 bg-gradient-to-bl from-zinc-900/95 to-zinc-950/95 shadow-2xl shadow-purple-700/20 backdrop-blur-xl"></div>
+        <div className="relative container mx-auto px-6">
+          <div className="flex items-center justify-center h-[68px]">
+            <img 
+              src="/logo.svg" 
+              alt="Tempest" 
+              className="h-8"
+            />
           </div>
         </div>
       </header>
@@ -65,56 +61,77 @@ export function Header() {
   ];
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <div className="flex items-center space-x-2">
-            <div className="flex items-center space-x-2">
+    <header className="fixed top-0 left-0 right-0 z-50">
+      {/* Premium gradient background with purple shadow */}
+      <div className="absolute inset-0 bg-gradient-to-bl from-zinc-900/95 to-zinc-950/95 shadow-2xl shadow-purple-700/20 backdrop-blur-xl"></div>
+      <div className="relative container mx-auto px-6">
+        <div className="flex items-center justify-between h-[68px]">
+          {/* Left Section with Menu and Navigation */}
+          <div className="flex items-center flex-1">
+            {/* Mobile Menu Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setMobileMenuOpen(true)}
+              className="md:hidden mr-4 hover:bg-white/10 text-white"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+
+            {/* Desktop Navigation */}
+            {isSignedIn && (
+              <nav className="hidden md:flex items-center space-x-6">
+                {navigationItems.map((item) => (
+                  <Link key={item.label} href={item.href}>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+                    >
+                      <item.icon className="h-4 w-4 mr-2" />
+                      {item.label}
+                    </Button>
+                  </Link>
+                ))}
+              </nav>
+            )}
+          </div>
+
+          {/* Center Logo */}
+          <div className="absolute left-1/2 transform -translate-x-1/2">
+            <Link href="/" className="flex items-center">
               <img 
                 src="/logo.svg" 
                 alt="Tempest" 
-                className="h-6"
+                className="h-8 w-auto"
               />
-            </div>
+            </Link>
           </div>
 
-          {/* Desktop Navigation */}
-          {isSignedIn && (
-            <div className="hidden md:flex items-center space-x-6">
-              {navigationItems.map((item) => (
-                <Link key={item.label} href={item.href}>
-                  <Button variant="ghost" size="sm">
-                    <item.icon className="h-4 w-4 mr-2" />
-                    {item.label}
-                  </Button>
-                </Link>
-              ))}
-            </div>
-          )}
-
-          {/* Search Bar (Desktop) */}
-          {isSignedIn && (
-            <div className="hidden md:flex items-center flex-1 max-w-md mx-6">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search channels, content..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-          )}
 
           {/* Right Section */}
           <div className="flex items-center space-x-3">
+            {/* Search Button */}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="hover:bg-white/10 text-white p-2"
+            >
+              <Search className="h-5 w-5" />
+            </Button>
+
+            {/* Theme Toggle */}
+            <ThemeToggle />
+
             {isClerkConfigured && isSignedIn ? (
               <>
                 {/* Notifications */}
-                <Button variant="ghost" size="sm" className="relative">
-                  <Bell className="h-4 w-4" />
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="relative hover:bg-white/10 text-white p-2"
+                >
+                  <Bell className="h-5 w-5" />
                   <Badge 
                     variant="destructive" 
                     className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs flex items-center justify-center"
@@ -123,58 +140,29 @@ export function Header() {
                   </Badge>
                 </Button>
 
-                {/* Theme Toggle */}
-                <ThemeToggle />
-
                 {/* User Button */}
                 <UserButton 
                   afterSignOutUrl="/"
                   appearance={{
                     elements: {
-                      avatarBox: "h-8 w-8"
+                      avatarBox: "h-8 w-8",
+                      userButtonPopoverCard: "bg-zinc-900 border border-zinc-800",
+                      userButtonPopoverActions: "bg-zinc-900",
+                      userButtonPopoverActionButton: "text-zinc-300 hover:bg-zinc-800 hover:text-white",
                     }
                   }}
                 />
-
-                {/* Mobile Menu */}
-                <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                  <SheetTrigger asChild>
-                    <Button variant="ghost" size="sm" className="md:hidden">
-                      <Menu className="h-4 w-4" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="right" className="w-64">
-                    <div className="flex flex-col space-y-4 mt-6">
-                      {/* Mobile Search */}
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Search..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="pl-10"
-                        />
-                      </div>
-
-                      {/* Mobile Navigation */}
-                      {navigationItems.map((item) => (
-                        <Link key={item.label} href={item.href}>
-                          <Button variant="ghost" className="justify-start w-full">
-                            <item.icon className="h-4 w-4 mr-2" />
-                            {item.label}
-                          </Button>
-                        </Link>
-                      ))}
-                    </div>
-                  </SheetContent>
-                </Sheet>
               </>
             ) : (
               <div className="flex items-center space-x-2">
-                <ThemeToggle />
                 {isClerkConfigured ? (
                   <SignInButton mode="modal">
-                    <Button size="sm">Sign In</Button>
+                    <Button 
+                      size="sm"
+                      className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white border-0"
+                    >
+                      Sign In
+                    </Button>
                   </SignInButton>
                 ) : (
                   <Button size="sm" disabled>
@@ -185,6 +173,27 @@ export function Header() {
             )}
           </div>
         </div>
+        {/* Full-Screen Mobile Menu Overlay */}
+        {mobileMenuOpen && (
+          <div className="fixed inset-0 top-[68px] bg-black/95 backdrop-blur-sm z-40 md:hidden">
+            <div className="p-6">
+              <nav className="space-y-6">
+                {navigationItems.map((item) => (
+                  <Link 
+                    key={item.label} 
+                    href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <div className="flex items-center text-2xl font-medium text-gray-400 hover:text-white transition-colors">
+                      <item.icon className="h-8 w-8 mr-4" />
+                      {item.label}
+                    </div>
+                  </Link>
+                ))}
+              </nav>
+            </div>
+          </div>
+        )}
       </div>
     </header>
   );

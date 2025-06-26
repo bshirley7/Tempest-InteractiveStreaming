@@ -31,7 +31,7 @@ function LibraryPageContent() {
   // Don't render anything until mounted to prevent hydration mismatch
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600"></div>
       </div>
     );
@@ -39,7 +39,7 @@ function LibraryPageContent() {
 
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600"></div>
       </div>
     );
@@ -48,7 +48,7 @@ function LibraryPageContent() {
   // If Clerk is not properly configured or user is signed in, allow access to the library
   if (!isClerkConfigured || isSignedIn) {
     return (
-      <div className="min-h-screen bg-black">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-zinc-950">
         <Header />
         <main className="pt-16">
           <VODLibrary />
@@ -68,7 +68,7 @@ function LibraryPageContent() {
 export default function LibraryPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600"></div>
       </div>
     }>

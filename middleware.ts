@@ -19,7 +19,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/public(.*)'
 ]);
 
-export default clerkMiddleware((auth, req) => {
+export default clerkMiddleware(async (auth, req) => {
   // Allow public routes without authentication
   if (isPublicRoute(req)) {
     return NextResponse.next();
@@ -27,7 +27,7 @@ export default clerkMiddleware((auth, req) => {
 
   // Protect routes that require authentication
   if (isProtectedRoute(req)) {
-    auth().protect();
+    await auth().protect();
   }
 
   // Continue to the next middleware or route handler

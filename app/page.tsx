@@ -59,7 +59,7 @@ function HomePageContent() {
                 Welcome to <span className="bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">Tempest</span>
               </h1>
               <p className="text-xl text-white/80 max-w-2xl mx-auto">
-                Your university's interactive streaming platform with live TV, on-demand content, and real-time engagement
+                Your university&apos;s interactive streaming platform with live TV, on-demand content, and real-time engagement
               </p>
             </div>
 

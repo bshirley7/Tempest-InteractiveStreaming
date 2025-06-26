@@ -26,13 +26,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file size (max 100MB for general uploads, 5MB for logos)
+    // Validate file size (max 100MB for general uploads, 2MB for logos for better performance)
     const isLogo = formData.get('type') === 'logo';
-    const maxSize = isLogo ? 5 * 1024 * 1024 : 100 * 1024 * 1024; // 5MB for logos, 100MB for others
+    const maxSize = isLogo ? 2 * 1024 * 1024 : 100 * 1024 * 1024; // 2MB for logos, 100MB for others
     if (file.size > maxSize) {
-      const maxSizeText = isLogo ? '5MB' : '100MB';
+      const maxSizeText = isLogo ? '2MB' : '100MB';
       return NextResponse.json(
-        { error: `File too large. Maximum size is ${maxSizeText}` },
+        { error: `File too large. Maximum size is ${maxSizeText} for optimal performance` },
         { status: 400 }
       );
     }

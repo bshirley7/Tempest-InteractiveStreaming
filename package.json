@@ -15,7 +15,11 @@
     "db:setup": "node scripts/setup-database.js",
     "db:push": "node scripts/push-schema.js",
     "db:check": "node scripts/create-tables.js",
-    "db:create": "node scripts/direct-db-setup.js"
+    "db:create": "node scripts/direct-db-setup.js",
+    "verify:videos": "node scripts/verify-video-ids.js",
+    "query:videos": "node scripts/query-video-ids.js",
+    "test:content": "node scripts/test-content-api.js",
+    "verify:setup": "node scripts/verify-setup.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.835.0",
@@ -79,6 +83,7 @@
     "react": "18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "18.3.1",
+    "react-dropzone": "^14.3.8",
     "react-hook-form": "^7.53.0",
     "react-resizable-panels": "^2.1.3",
     "recharts": "^2.12.7",

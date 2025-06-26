@@ -142,6 +142,10 @@ function generatePrograms(channelId: string, channelName: string, category: stri
  */
 function getCategoryPrograms(category: string): string[] {
   const programMap: Record<string, string[]> = {
+    'announcements': [
+      'Campus Updates Live', 'Important Announcements', 'Emergency Alerts', 
+      'Event Notifications', 'Academic Reminders', 'Community News'
+    ],
     'news': [
       'Campus Morning Update', 'Breaking News', 'Student Government Live', 
       'Weather & Traffic', 'Faculty Spotlight', 'Campus Events Today'
@@ -172,6 +176,7 @@ function getCategoryPrograms(category: string): string[] {
  */
 function getDefaultChannelLogo(category: string): string {
   const logoMap: Record<string, string> = {
+    'announcements': 'https://images.pexels.com/photos/256417/pexels-photo-256417.jpeg?auto=compress&cs=tinysrgb&w=100',
     'news': 'https://images.pexels.com/photos/1181273/pexels-photo-1181273.jpeg?auto=compress&cs=tinysrgb&w=100',
     'education': 'https://images.pexels.com/photos/2280571/pexels-photo-2280571.jpeg?auto=compress&cs=tinysrgb&w=100',
     'sports': 'https://images.pexels.com/photos/1752757/pexels-photo-1752757.jpeg?auto=compress&cs=tinysrgb&w=100',
@@ -198,6 +203,11 @@ function getMockChannels(): EPGChannel[] {
   }
 
   const mockChannels = [
+    {
+      id: 'campus-pulse',
+      name: 'Campus Pulse',
+      category: 'announcements'
+    },
     {
       id: 'campus-news',
       name: 'Campus News Network',

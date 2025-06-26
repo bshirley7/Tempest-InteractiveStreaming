@@ -57,6 +57,22 @@ export interface VideoContent {
   metadata: Record<string, any>;
   created_at: string;
   updated_at: string;
+  
+  // Interaction metadata
+  source_type?: 'live' | 'vod' | 'live_recording';
+  original_stream_id?: string;
+  stream_status?: 'live' | 'ended' | 'scheduled';
+  has_chat?: boolean;
+  has_reactions?: boolean;
+  has_polls?: boolean;
+  has_quiz?: boolean;
+  has_updates?: boolean;
+  has_comments?: boolean;
+  chat_moderation?: 'open' | 'moderated' | 'disabled';
+  reactions_enabled?: boolean;
+  course_id?: string;
+  lesson_id?: string;
+  has_assessments?: boolean;
 }
 
 export interface LocalVideoContent {
@@ -155,8 +171,9 @@ export interface Poll {
   id: string;
   question: string;
   options: PollOption[];
-  duration: number;
+  duration?: number;
   isActive: boolean;
+  allowMultipleVotes?: boolean;
   results?: PollResults;
   createdAt: Date;
   expiresAt: Date;
@@ -174,14 +191,51 @@ export interface PollResults {
   winningOption?: PollOption;
 }
 
+// Multi-question Quiz Types
 export interface Quiz {
+  id: string;
+  title: string;
+  description?: string;
+  questions: QuizQuestion[];
+  timeLimit?: number;
+  passingScore?: number;
+  isActive: boolean;
+  createdAt: Date;
+}
+
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  answers: QuizAnswer[];
+  correctAnswer: string;
+  points?: number;
+  explanation?: string;
+}
+
+export interface QuizAnswer {
+  id: string;
+  text: string;
+}
+
+export interface QuizResults {
+  quizId: string;
+  score: number;
+  totalScore: number;
+  correctAnswers: number;
+  totalQuestions: number;
+  timeSpent: number;
+  answers: Record<string, string>;
+}
+
+// Legacy single-question quiz (kept for compatibility)
+export interface SingleQuiz {
   id: string;
   question: string;
   options: QuizOption[];
   correctAnswer: string;
   timeLimit: number;
   isActive: boolean;
-  results?: QuizResults;
+  results?: SingleQuizResults;
   createdAt: Date;
   expiresAt: Date;
 }
@@ -192,10 +246,40 @@ export interface QuizOption {
   isCorrect: boolean;
 }
 
-export interface QuizResults {
+export interface SingleQuizResults {
   totalParticipants: number;
   correctAnswers: number;
   averageTime: number;
+}
+
+// Emoji Reaction Types
+export type EmojiType = 
+  | 'heart' 
+  | 'thumbs_up' 
+  | 'laugh' 
+  | 'surprise' 
+  | 'fire' 
+  | 'star' 
+  | 'zap' 
+  | 'sad';
+
+export interface EmojiReaction {
+  id: string;
+  emoji: EmojiType;
+  timestamp: Date;
+  userId: string;
+}
+
+// Rating Types
+export type RatingType = 'stars' | 'thumbs';
+
+export interface Rating {
+  id: string;
+  contentId: string;
+  userId: string;
+  rating: number;
+  type: RatingType;
+  timestamp: Date;
 }
 
 // Chat Types

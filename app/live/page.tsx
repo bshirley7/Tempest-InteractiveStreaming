@@ -31,10 +31,19 @@ function LivePageContent() {
 
   // Mock channel data (in a real app, this would come from your data source)
   const mockChannels = {
+    'campus-pulse': {
+      id: 'campus-pulse',
+      name: 'Campus Pulse',
+      number: '001',
+      logo: 'https://images.pexels.com/photos/256417/pexels-photo-256417.jpeg?auto=compress&cs=tinysrgb&w=100',
+      category: 'announcements',
+      isHD: true,
+      currentViewers: 2147
+    },
     'campus-news': {
       id: 'campus-news',
       name: 'Campus News Network',
-      number: '001',
+      number: '002',
       logo: 'https://images.pexels.com/photos/1181273/pexels-photo-1181273.jpeg?auto=compress&cs=tinysrgb&w=100',
       category: 'news',
       isHD: true,
@@ -43,7 +52,7 @@ function LivePageContent() {
     'edu-channel': {
       id: 'edu-channel',
       name: 'University Education',
-      number: '002',
+      number: '003',
       logo: 'https://images.pexels.com/photos/2280571/pexels-photo-2280571.jpeg?auto=compress&cs=tinysrgb&w=100',
       category: 'education',
       isHD: true,
@@ -52,7 +61,7 @@ function LivePageContent() {
     'sports-network': {
       id: 'sports-network',
       name: 'Campus Sports',
-      number: '003',
+      number: '004',
       logo: 'https://images.pexels.com/photos/1752757/pexels-photo-1752757.jpeg?auto=compress&cs=tinysrgb&w=100',
       category: 'sports',
       isHD: true,
@@ -61,7 +70,7 @@ function LivePageContent() {
     'arts-culture': {
       id: 'arts-culture',
       name: 'Arts & Culture',
-      number: '004',
+      number: '005',
       logo: 'https://images.pexels.com/photos/1193743/pexels-photo-1193743.jpeg?auto=compress&cs=tinysrgb&w=100',
       category: 'entertainment',
       isHD: true,
@@ -70,7 +79,7 @@ function LivePageContent() {
     'student-life': {
       id: 'student-life',
       name: 'Student Life TV',
-      number: '005',
+      number: '006',
       logo: 'https://images.pexels.com/photos/1181406/pexels-photo-1181406.jpeg?auto=compress&cs=tinysrgb&w=100',
       category: 'entertainment',
       isHD: true,
@@ -79,7 +88,7 @@ function LivePageContent() {
     'research-docs': {
       id: 'research-docs',
       name: 'Research & Docs',
-      number: '006',
+      number: '007',
       logo: 'https://images.pexels.com/photos/159490/yale-university-landscape-universities-schools-159490.jpeg?auto=compress&cs=tinysrgb&w=100',
       category: 'documentary',
       isHD: true,
@@ -87,12 +96,31 @@ function LivePageContent() {
     }
   };
 
-  const handleChannelSelect = (channelId: string) => {
+  const handleChannelSelect = (channelId: string, channelData?: any) => {
     setSelectedChannel(channelId);
     setShowMiniPlayer(true);
     
-    // Get channel data
-    const channel = mockChannels[channelId as keyof typeof mockChannels];
+    // Use provided channel data, or fallback to mock data, or create default
+    let channel = channelData;
+    
+    if (!channel) {
+      // Try mock channels first
+      channel = mockChannels[channelId as keyof typeof mockChannels];
+    }
+    
+    if (!channel) {
+      // Create fallback data for unknown channels
+      channel = {
+        id: channelId,
+        name: 'Live Channel',
+        number: '001',
+        logo: '',
+        category: 'general',
+        isHD: true,
+        currentViewers: Math.floor(Math.random() * 1000) + 100
+      };
+    }
+    
     setSelectedChannelData(channel);
     
     // Mock current and next programs
@@ -107,6 +135,7 @@ function LivePageContent() {
     nextEnd.setMinutes(nextStart.getMinutes() + 30);
     
     const programTitles = {
+      'campus-pulse': ['Campus Updates Live', 'Important Announcements'],
       'campus-news': ['Campus Morning Update', 'Breaking News Live'],
       'edu-channel': ['Physics 101 Lecture', 'Chemistry Lab Demo'],
       'sports-network': ['Basketball Game Live', 'Sports Highlights'],
@@ -117,7 +146,7 @@ function LivePageContent() {
     
     const titles = programTitles[channelId as keyof typeof programTitles] || ['Live Program', 'Next Program'];
     
-    setCurrentProgram({
+    const currentProgramData = {
       id: `${channelId}-current`,
       title: titles[0],
       description: `Join us for ${titles[0].toLowerCase()} featuring the latest updates and insights from our university community.`,
@@ -128,7 +157,9 @@ function LivePageContent() {
       isLive: true,
       isNew: Math.random() > 0.7,
       thumbnail: `https://images.pexels.com/photos/${1000000 + Math.floor(Math.random() * 1000000)}/pexels-photo-${1000000 + Math.floor(Math.random() * 1000000)}.jpeg?auto=compress&cs=tinysrgb&w=400`
-    });
+    };
+    
+    setCurrentProgram(currentProgramData);
     
     setNextProgram({
       id: `${channelId}-next`,
@@ -196,7 +227,12 @@ function LivePageContent() {
       return (
         <div className="min-h-screen bg-black">
           <div className="relative h-screen">
-            <StreamPlayer channelId={selectedChannel} />
+            <StreamPlayer 
+              channelId={selectedChannel} 
+              channelData={selectedChannelData}
+              currentProgram={currentProgram}
+              nextProgram={nextProgram}
+            />
             
             {/* Fullscreen Controls */}
             <div className="absolute top-4 left-4 z-10">

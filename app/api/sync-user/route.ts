@@ -12,7 +12,7 @@ import { syncClerkUserToSupabase } from '@/lib/clerk-supabase-sync';
 export async function POST(request: NextRequest) {
   try {
     // Verify the user is authenticated with Clerk
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },

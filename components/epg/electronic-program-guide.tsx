@@ -32,7 +32,7 @@ type Program = EPGProgram;
 type Channel = EPGChannel;
 
 interface EPGProps {
-  onChannelSelect: (channelId: string) => void;
+  onChannelSelect: (channelId: string, channelData?: Channel) => void;
   selectedChannel: string | null;
 }
 
@@ -47,7 +47,7 @@ export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPG
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const categories = [
-    'all', 'news', 'education', 'sports', 'entertainment', 'documentary'
+    'all', 'announcements', 'news', 'education', 'sports', 'entertainment', 'documentary'
   ];
 
   useEffect(() => {
@@ -214,108 +214,96 @@ export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPG
                       "hover:bg-gradient-to-br hover:from-purple-500/10 hover:via-indigo-500/10 hover:to-blue-500/10",
                       selectedChannel === channel.id && "ring-2 ring-purple-500/50 bg-gradient-to-r from-purple-600/20 via-indigo-500/15 to-blue-500/20"
                     )}
-                    onClick={() => onChannelSelect(channel.id)}
+                    onClick={() => onChannelSelect(channel.id, channel)}
                   >
-                  <CardContent className="p-4">
-                    <div className="flex items-start space-x-4">
-                      {/* Channel Logo */}
-                      <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-muted/50 flex items-center justify-center">
-                        {channel.logo ? (
-                          <img
-                            src={channel.logo}
-                            alt={channel.name}
-                            className="w-full h-full object-contain"
-                            onError={(e) => {
-                              // Fallback to channel name if logo fails to load
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = 'none';
-                              const parent = target.parentElement;
-                              if (parent) {
-                                parent.innerHTML = `
-                                  <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-bold text-xs text-center p-1">
-                                    ${channel.name}
-                                  </div>
-                                  <div class="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs px-1 rounded">${channel.number}</div>
-                                `;
-                              }
-                            }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-bold text-xs text-center p-1">
-                            {channel.name}
-                          </div>
-                        )}
-                        <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs px-1 rounded">
-                          {channel.number}
-                        </div>
+                  <CardContent className="p-0 h-48 relative overflow-hidden">
+                    {/* Full-width background logo */}
+                    {channel.logo ? (
+                      <>
+                        <img
+                          src={channel.logo}
+                          alt={channel.name}
+                          className="absolute inset-0 w-full h-full object-contain p-4"
+                          onError={(e) => {
+                            // Fallback to channel initials if logo fails to load
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              const fallback = document.createElement('div');
+                              fallback.className = 'absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/30 to-primary/20 text-primary-foreground font-bold text-4xl';
+                              fallback.textContent = channel.name.split(' ').map(word => word[0]).join('').substring(0, 3).toUpperCase();
+                              parent.appendChild(fallback);
+                            }
+                          }}
+                        />
+                        {/* Gradient overlay for better text readability */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                      </>
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/30 to-primary/20 text-primary-foreground font-bold text-4xl">
+                        {channel.name.split(' ').map(word => word[0]).join('').substring(0, 3).toUpperCase()}
                       </div>
+                    )}
 
-                      {/* Channel Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <h3 className="font-semibold text-lg">{channel.name}</h3>
-                          {channel.isHD && (
-                            <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/25">
-                              HD
+                    {/* Content overlay */}
+                    <div className="absolute inset-0 p-4 flex flex-col justify-between">
+                      {/* Current Program */}
+                      {currentProgram && (
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <motion.div
+                              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 text-white shadow-lg shadow-purple-500/30"
+                              animate={{ scale: [1, 1.05, 1] }}
+                              transition={{ duration: 2, repeat: Infinity }}
+                            >
+                              <Radio className="h-3 w-3 mr-1" />
+                              LIVE
+                            </motion.div>
+                            <span className="text-sm text-white/90">
+                              {formatTime(currentProgram.startTime)} - {formatTime(currentProgram.endTime)}
                             </span>
-                          )}
-                          <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                            <Users className="h-3 w-3" />
-                            <span>{channel.currentViewers?.toLocaleString()}</span>
                           </div>
+                          <h4 className="font-semibold text-lg text-white">{currentProgram.title}</h4>
+                          <p className="text-sm text-white/80 line-clamp-2">
+                            {currentProgram.description}
+                          </p>
                         </div>
+                      )}
 
-                        {/* Current Program */}
+                      {/* Bottom section */}
+                      <div className="space-y-2">
+                        {/* Progress bar */}
                         {currentProgram && (
-                          <div className="mb-3">
-                            <div className="flex items-center space-x-2 mb-1">
-                              <motion.div
-                                className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 text-white shadow-lg shadow-purple-500/30"
-                                animate={{ scale: [1, 1.05, 1] }}
-                                transition={{ duration: 2, repeat: Infinity }}
-                              >
-                                <Radio className="h-3 w-3 mr-1" />
-                                LIVE
-                              </motion.div>
-                              <span className="text-sm text-muted-foreground">
-                                {formatTime(currentProgram.startTime)} - {formatTime(currentProgram.endTime)}
-                              </span>
-                            </div>
-                            <h4 className="font-medium">{currentProgram.title}</h4>
-                            <p className="text-sm text-muted-foreground line-clamp-2">
-                              {currentProgram.description}
-                            </p>
-                            <div className="mt-2">
-                              <div className="w-full bg-muted rounded-full h-1">
-                                <div 
-                                  className="bg-primary h-1 rounded-full transition-all duration-300"
-                                  style={{ width: `${getProgressPercentage(currentProgram)}%` }}
-                                />
-                              </div>
-                            </div>
+                          <div className="w-full bg-white/20 rounded-full h-1">
+                            <div 
+                              className="bg-white h-1 rounded-full transition-all duration-300"
+                              style={{ width: `${getProgressPercentage(currentProgram)}%` }}
+                            />
                           </div>
                         )}
-
-                        {/* Next Program */}
-                        {nextProgram && (
-                          <div className="text-sm text-muted-foreground">
-                            <span className="font-medium">Next:</span> {nextProgram.title} at {formatTime(nextProgram.startTime)}
-                          </div>
-                        )}
+                        
+                        {/* Next program and watch button */}
+                        <div className="flex items-center justify-between">
+                          {nextProgram && (
+                            <div className="text-sm text-white/70">
+                              <span className="font-medium">Next:</span> {nextProgram.title}
+                            </div>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="ml-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onChannelSelect(channel.id, channel);
+                            }}
+                          >
+                            <Play className="h-4 w-4 mr-1" />
+                            Watch
+                          </Button>
+                        </div>
                       </div>
-
-                      {/* Action Button */}
-                      <Button
-                        size="sm"
-                        className="shrink-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onChannelSelect(channel.id);
-                        }}
-                      >
-                        <Play className="h-4 w-4 mr-1" />
-                        Watch
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -410,53 +398,37 @@ export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPG
                   transition={{ duration: 0.3 }}
                   whileHover={{ scale: 1.005, transition: { duration: 0.2 } }}
                 >
-                  <div className="flex items-center space-x-3 h-full">
-                    {/* Enhanced Logo Display */}
-                    <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-muted/50 flex items-center justify-center flex-shrink-0">
-                      {channel.logo ? (
-                        <img
-                          src={channel.logo}
-                          alt={channel.name}
-                          className="w-full h-full object-contain"
-                          onError={(e) => {
-                            // Fallback to channel name if logo fails to load
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            const parent = target.parentElement;
-                            if (parent) {
-                              parent.innerHTML = `
-                                <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-bold text-[10px] text-center p-1 leading-tight">
-                                  ${channel.name}
-                                </div>
-                              `;
-                            }
-                          }}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-bold text-[10px] text-center p-1 leading-tight">
-                          {channel.name}
-                        </div>
-                      )}
+                  {/* Full-width logo display */}
+                  {channel.logo ? (
+                    <div className="relative w-full h-full">
+                      <img
+                        src={channel.logo}
+                        alt={channel.name}
+                        className="w-full h-full object-contain p-2"
+                        onError={(e) => {
+                          // Fallback to channel initials if logo fails to load
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent) {
+                            const fallback = document.createElement('div');
+                            fallback.className = 'absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/30 to-primary/20 text-primary-foreground font-bold text-lg';
+                            fallback.textContent = channel.name.split(' ').map(word => word[0]).join('').substring(0, 3).toUpperCase();
+                            parent.appendChild(fallback);
+                          }
+                        }}
+                      />
+                      {/* Optional gradient overlay for depth */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-1 mb-1">
-                        <span className="text-xs font-mono text-muted-foreground">
-                          {channel.number}
-                        </span>
-                        {channel.isHD && (
-                          <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/25">
-                            HD
-                          </span>
-                        )}
-                      </div>
-                      <p className="font-medium text-sm truncate">{channel.name}</p>
-                      <div className="flex items-center space-x-1 text-xs text-muted-foreground">
-                        <Users className="h-3 w-3" />
-                        <span>{channel.currentViewers?.toLocaleString()}</span>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/30 to-primary/20 text-primary-foreground font-bold text-lg px-4">
+                      <div>
+                        <div className="text-center">{channel.name.split(' ').map(word => word[0]).join('').substring(0, 3).toUpperCase()}</div>
+                        <div className="text-xs mt-1 opacity-80">{channel.name}</div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </motion.div>
               ))}
             </ScrollArea>
@@ -513,7 +485,7 @@ export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPG
                             program.isLive && "ring-2 ring-purple-500/50"
                           )}
                           style={{ width: `${width}px`, minWidth: `${width}px` }}
-                          onClick={() => onChannelSelect(channel.id)}
+                          onClick={() => onChannelSelect(channel.id, channel)}
                           initial={{ opacity: 0, scale: 0.95 }}
                           animate={{ opacity: 1, scale: 1 }}
                           transition={{ duration: 0.3, delay: programIndex * 0.05 }}

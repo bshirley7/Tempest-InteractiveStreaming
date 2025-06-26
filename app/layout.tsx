@@ -25,28 +25,6 @@ export default function RootLayout({
 }) {
   const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
   
-  // If no Clerk key is provided or it's a placeholder, render without authentication
-  if (!publishableKey || publishableKey.includes('pk_test_') === false) {
-    return (
-      <html lang="en" suppressHydrationWarning>
-        <body className={inter.className}>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <div className="min-h-screen flex flex-col">
-              {children}
-              <Footer />
-            </div>
-            <Toaster />
-          </ThemeProvider>
-        </body>
-      </html>
-    );
-  }
-
   return (
     <ClerkProvider
       publishableKey={publishableKey}

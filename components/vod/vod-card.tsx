@@ -76,7 +76,8 @@ export function VODCard({
   const getAspectRatioClass = () => {
     if (variant === "hero") return "aspect-video"
     if (aspectRatio === "poster") return "aspect-[2/3]"
-    return "aspect-video" // 16:9
+    if (aspectRatio === "16:9") return "aspect-video"
+    return "aspect-video" // 16:9 default
   }
 
   // Hero variant (unchanged from your original)

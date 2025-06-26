@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { StreamVideo, StreamVideoApi } from '@cloudflare/stream-react';
+import { Stream, StreamPlayerApi } from '@cloudflare/stream-react';
 import { Play, Pause, Volume2, VolumeX, Maximize, Settings, SkipBack, SkipForward } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { VideoContent, VideoPlayerState, VideoPlayerConfig } from '@/lib/types';
 import { VIDEO_QUALITIES, STREAM_CONFIG } from '@/lib/constants';
+import { cn } from '@/lib/utils';
 
 interface VODPlayerProps {
   video: VideoContent;
@@ -28,7 +29,8 @@ export function VODPlayer({
   autoPlay = false,
   className = '',
 }: VODPlayerProps) {
-  const streamRef = useRef<StreamVideoApi>(null);
+  const streamRef = useRef<StreamPlayerApi>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
   
   const [playerState, setPlayerState] = useState<VideoPlayerState>({
@@ -49,7 +51,7 @@ export function VODPlayer({
 
   const playerConfig: VideoPlayerConfig = {
     autoplay: autoPlay,
-    controls: false, // We'll use custom controls
+    controls: false, // Using custom controls with quality selection
     muted: false,
     loop: false,
     quality: 'auto',
@@ -95,15 +97,91 @@ export function VODPlayer({
     };
   }, [controlsTimeout]);
 
+  // Find the actual video element
+  useEffect(() => {
+    const findVideoElement = () => {
+      if (playerContainerRef.current) {
+        // Try to find video element
+        let videoElement = playerContainerRef.current.querySelector('video');
+        
+        // If no direct video, try looking in iframe
+        if (!videoElement) {
+          const iframe = playerContainerRef.current.querySelector('iframe');
+          if (iframe) {
+            console.log('Found iframe, trying to access video inside');
+            try {
+              // Try to access iframe content (may fail due to CORS)
+              videoElement = iframe.contentDocument?.querySelector('video');
+            } catch (e) {
+              console.log('Cannot access iframe content due to CORS');
+            }
+          }
+        }
+        
+        // Try alternative selectors
+        if (!videoElement) {
+          videoElement = playerContainerRef.current.querySelector('[data-testid="videoPlayer"] video') ||
+                       playerContainerRef.current.querySelector('.cf-player video') ||
+                       playerContainerRef.current.querySelector('video[src], video[srcObject]');
+        }
+        
+        if (videoElement) {
+          videoRef.current = videoElement;
+          console.log('Video element found:', videoElement);
+          console.log('Video src:', videoElement.src);
+          console.log('Video readyState:', videoElement.readyState);
+          return true;
+        } else {
+          console.log('No video element found. Container contents:');
+          console.log(playerContainerRef.current.innerHTML);
+        }
+      }
+      return false;
+    };
+
+    // Try to find video element with multiple attempts
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    const tryFind = () => {
+      attempts++;
+      if (findVideoElement() || attempts >= maxAttempts) {
+        return;
+      }
+      setTimeout(tryFind, 500);
+    };
+    
+    tryFind();
+  }, []);
+
+  // Debug stream ref
+  useEffect(() => {
+    if (streamRef.current) {
+      console.log('Stream ref initialized:', streamRef.current);
+      console.log('Stream ref methods:', Object.getOwnPropertyNames(streamRef.current));
+    }
+  }, [streamRef.current]);
+
   // Stream event handlers
   const handleStreamReady = useCallback(() => {
+    console.log('Stream ready! Video ID:', video?.cloudflare_video_id);
     updatePlayerState({ isLoading: false });
     
     if (streamRef.current) {
-      const duration = streamRef.current.duration || video.duration || 0;
-      updatePlayerState({ duration });
+      const duration = streamRef.current.duration || video?.duration || 0;
+      console.log('Stream duration:', duration);
+      console.log('Stream ref available:', streamRef.current);
+      
+      // Initialize player state with current values
+      updatePlayerState({ 
+        duration,
+        volume: streamRef.current.volume * 100 || 80,
+        currentTime: streamRef.current.currentTime || 0,
+        isPlaying: !streamRef.current.paused,
+        isPaused: streamRef.current.paused
+      });
     }
-  }, [updatePlayerState, video.duration]);
+  }, [updatePlayerState, video]);
 
   const handlePlay = useCallback(() => {
     updatePlayerState({ isPlaying: true, isPaused: false });
@@ -116,7 +194,7 @@ export function VODPlayer({
   const handleTimeUpdate = useCallback(() => {
     if (streamRef.current) {
       const currentTime = streamRef.current.currentTime || 0;
-      const duration = streamRef.current.duration || video.duration || 0;
+      const duration = streamRef.current.duration || video?.duration || 0;
       
       updatePlayerState({ currentTime, duration });
       onProgress?.(currentTime, duration);
@@ -130,46 +208,71 @@ export function VODPlayer({
 
   const handleError = useCallback((error: any) => {
     console.error('Video player error:', error);
+    console.error('Video ID:', video?.cloudflare_video_id);
+    console.error('Video object:', video);
     updatePlayerState({ 
       isError: true, 
       isLoading: false,
       error: 'Failed to load video. Please try again.' 
     });
-  }, [updatePlayerState]);
+  }, [updatePlayerState, video]);
 
   // Control handlers
   const togglePlayPause = useCallback(() => {
-    if (!streamRef.current) return;
+    const video = videoRef.current || streamRef.current;
+    if (!video) {
+      console.log('No video element available');
+      return;
+    }
 
+    console.log('Toggle play/pause, current state:', playerState.isPlaying);
+    
     if (playerState.isPlaying) {
-      streamRef.current.pause();
+      video.pause();
     } else {
-      streamRef.current.play();
+      video.play().catch(error => {
+        console.error('Play failed:', error);
+        // If autoplay fails, try to play muted
+        video.muted = true;
+        video.play().catch(e => console.error('Muted play also failed:', e));
+      });
     }
   }, [playerState.isPlaying]);
 
   const handleSeek = useCallback((time: number) => {
-    if (streamRef.current) {
-      streamRef.current.currentTime = time;
+    const video = videoRef.current || streamRef.current;
+    if (video) {
+      console.log('Seeking to:', time);
+      video.currentTime = time;
       updatePlayerState({ currentTime: time });
     }
   }, [updatePlayerState]);
 
   const handleVolumeChange = useCallback((volume: number) => {
-    if (streamRef.current) {
-      streamRef.current.volume = volume / 100;
-      updatePlayerState({ volume });
+    const video = videoRef.current || streamRef.current;
+    if (video) {
+      console.log('Setting volume to:', volume);
+      video.volume = volume / 100;
+      updatePlayerState({ volume, isMuted: volume === 0 });
     }
   }, [updatePlayerState]);
 
   const toggleMute = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.muted = !streamRef.current.muted;
+    const video = videoRef.current || streamRef.current;
+    if (video) {
+      const newMutedState = !video.muted;
+      console.log('Toggling mute to:', newMutedState);
+      video.muted = newMutedState;
+      updatePlayerState({ 
+        volume: newMutedState ? 0 : playerState.volume,
+        isMuted: newMutedState 
+      });
     }
-  }, []);
+  }, [updatePlayerState, playerState.volume]);
 
   const skipTime = useCallback((seconds: number) => {
-    if (streamRef.current) {
+    const video = videoRef.current || streamRef.current;
+    if (video) {
       const newTime = Math.max(0, Math.min(playerState.duration, playerState.currentTime + seconds));
       handleSeek(newTime);
     }
@@ -188,8 +291,14 @@ export function VODPlayer({
   }, [updatePlayerState]);
 
   const handleQualityChange = useCallback((quality: string) => {
+    console.log('Changing quality to:', quality);
     updatePlayerState({ quality });
-    // Note: Cloudflare Stream automatically handles quality switching
+    
+    // For Cloudflare Stream, quality is managed automatically
+    // but we can try to influence it through the player API
+    if (streamRef.current && typeof streamRef.current.setQuality === 'function') {
+      streamRef.current.setQuality(quality);
+    }
   }, [updatePlayerState]);
 
   // Format time for display
@@ -203,6 +312,18 @@ export function VODPlayer({
   const progressPercentage = playerState.duration > 0 
     ? (playerState.currentTime / playerState.duration) * 100 
     : 0;
+
+  // Check if video prop is valid
+  if (!video || !video.cloudflare_video_id) {
+    return (
+      <div className={`relative bg-black rounded-lg flex items-center justify-center min-h-[400px] ${className}`}>
+        <div className="text-center text-white">
+          <p className="text-lg mb-4">No video available</p>
+          <p className="text-sm text-gray-400">Video ID is missing</p>
+        </div>
+      </div>
+    );
+  }
 
   if (playerState.isError) {
     return (
@@ -224,15 +345,15 @@ export function VODPlayer({
   return (
     <div 
       ref={playerContainerRef}
-      className={`relative bg-black rounded-lg overflow-hidden group ${className}`}
+      className={cn("video-container-16-9 rounded-lg overflow-hidden group", className)}
       onMouseMove={handleMouseMove}
       onMouseLeave={() => playerState.isPlaying && setShowControls(false)}
     >
       {/* Video Stream */}
-      <StreamVideo
+      <Stream
         ref={streamRef}
         src={video.cloudflare_video_id}
-        controls={false}
+        controls={true}
         autoPlay={playerConfig.autoplay}
         muted={playerConfig.muted}
         loop={playerConfig.loop}
@@ -242,9 +363,36 @@ export function VODPlayer({
         onTimeUpdate={handleTimeUpdate}
         onEnded={handleEnded}
         onError={handleError}
-        className="w-full h-full"
-        style={{ aspectRatio: '16/9' }}
+        style={{ width: '100%', height: '100%' }}
       />
+
+      {/* Click to Play Overlay - Hidden while using native controls */}
+      {false && !playerState.isPlaying && !playerState.isLoading && (
+        <div 
+          className="absolute inset-0 flex items-center justify-center bg-black/20 cursor-pointer"
+          onClick={togglePlayPause}
+        >
+          <div className="bg-black/60 rounded-full p-4 hover:bg-black/80 transition-colors">
+            <Play className="h-12 w-12 text-white" />
+          </div>
+        </div>
+      )}
+
+      {/* Fallback iframe for debugging */}
+      {playerState.isError && (
+        <iframe
+          src={`https://customer-ydgwaifmhmzkp7in.cloudflarestream.com/${video.cloudflare_video_id}/iframe?autoplay=${playerConfig.autoplay ? 'true' : 'false'}`}
+          className="max-w-full max-h-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
+          style={{ 
+            border: 'none',
+            width: 'auto',
+            height: 'auto',
+            aspectRatio: '16/9'
+          }}
+          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+          allowFullScreen
+        />
+      )}
 
       {/* Loading Overlay */}
       {playerState.isLoading && (
@@ -253,12 +401,13 @@ export function VODPlayer({
         </div>
       )}
 
-      {/* Custom Controls */}
-      <div 
-        className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity duration-300 ${
-          showControls ? 'opacity-100' : 'opacity-0'
-        }`}
-      >
+      {/* Custom Controls - Temporarily hidden to debug video element access */}
+      {false && (
+        <div 
+          className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity duration-300 ${
+            showControls ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
         {/* Progress Bar */}
         <div className="mb-4">
           <div className="relative w-full h-1 bg-white/30 rounded-full cursor-pointer">
@@ -321,7 +470,7 @@ export function VODPlayer({
                 onClick={toggleMute}
                 className="text-white hover:bg-white/20"
               >
-                {playerState.volume === 0 ? (
+                {playerState.volume === 0 || (videoRef.current || streamRef.current)?.muted ? (
                   <VolumeX className="h-4 w-4" />
                 ) : (
                   <Volume2 className="h-4 w-4" />
@@ -381,18 +530,28 @@ export function VODPlayer({
             </Button>
           </div>
         </div>
-      </div>
+        </div>
+      )}
 
-      {/* Video Info Overlay */}
+      {/* Video Info Overlay - Positioned to avoid back button */}
       <div 
-        className={`absolute top-4 left-4 right-4 transition-opacity duration-300 ${
+        className={`absolute top-0 left-0 right-0 transition-opacity duration-300 ${
           showControls ? 'opacity-100' : 'opacity-0'
         }`}
       >
-        <h3 className="text-white text-lg font-semibold mb-1">{video.title}</h3>
-        {video.description && (
-          <p className="text-white/80 text-sm line-clamp-2">{video.description}</p>
-        )}
+        {/* Gradient background with purple tint */}
+        <div className="bg-gradient-to-b from-purple-900/80 via-indigo-600/40 to-transparent pb-8 pt-24 px-6">
+          <div className="max-w-3xl">
+            <h3 className="text-white text-xl font-semibold mb-2">
+              {video.title}
+            </h3>
+            {video.description && (
+              <p className="text-white/90 text-sm line-clamp-3">
+                {video.description}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

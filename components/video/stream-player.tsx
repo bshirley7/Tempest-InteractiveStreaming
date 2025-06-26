@@ -24,17 +24,20 @@ import { cn } from '@/lib/utils';
 
 interface StreamPlayerProps {
   channelId: string;
+  channelData?: any;
+  currentProgram?: any;
+  nextProgram?: any;
 }
 
-export function StreamPlayer({ channelId }: StreamPlayerProps) {
+export function StreamPlayer({ channelId, channelData, currentProgram, nextProgram }: StreamPlayerProps) {
   // Use HBO Max style player as the primary interface
   return (
     <HBOMaxPlayer
       videoId={channelId}
-      title="Campus News Live"
-      subtitle="S1 E1: Chapter I - Daily University Updates"
+      title={currentProgram?.title || channelData?.name || "Live Stream"}
+      subtitle={currentProgram?.description || `Channel ${channelData?.number || channelId}`}
       isLive={true}
-      viewers={2847}
+      viewers={channelData?.currentViewers || 2847}
     />
   );
 

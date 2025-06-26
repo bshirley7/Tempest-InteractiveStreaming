@@ -219,11 +219,28 @@ export function MiniVideoPlayer({
               {/* Channel Header */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
-                  <img
-                    src={channel.logo}
-                    alt={channel.name}
-                    className="w-8 h-8 rounded object-cover"
-                  />
+                  {channel.logo ? (
+                    <img
+                      src={channel.logo}
+                      alt={channel.name}
+                      className="w-8 h-8 rounded object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent) {
+                          const fallback = document.createElement('div');
+                          fallback.className = 'w-8 h-8 rounded bg-primary/20 flex items-center justify-center text-primary text-xs font-bold';
+                          fallback.textContent = channel.name.split(' ').map(word => word[0]).join('').substring(0, 2).toUpperCase();
+                          parent.appendChild(fallback);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded bg-primary/20 flex items-center justify-center text-primary text-xs font-bold">
+                      {channel.name.split(' ').map(word => word[0]).join('').substring(0, 2).toUpperCase()}
+                    </div>
+                  )}
                   <div>
                     <h3 className="font-semibold text-lg">{channel.name}</h3>
                     <div className="flex items-center space-x-2 text-sm text-muted-foreground">

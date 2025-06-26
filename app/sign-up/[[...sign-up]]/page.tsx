@@ -17,7 +17,7 @@ export default function Page() {
               className="h-6"
             />
           </div>
-          <p className="text-white/70">Join your university's streaming platform</p>
+          <p className="text-white/70">Join your university&apos;s streaming platform</p>
         </div>
         <SignUp 
           appearance={{

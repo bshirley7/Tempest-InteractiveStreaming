@@ -4,7 +4,7 @@ import { revalidateTag } from 'next/cache';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     
     const page = parseInt(searchParams.get('page') || '1');
@@ -16,6 +16,13 @@ export async function GET(request: NextRequest) {
     
     const offset = (page - 1) * limit;
     
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Database not configured' },
+        { status: 500 }
+      );
+    }
+
     let query = supabase
       .from('content')
       .select(`
@@ -45,10 +52,34 @@ export async function GET(request: NextRequest) {
       query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
     }
     
-    // Get total count for pagination
-    const { count } = await supabase
+    // Build count query with same filters
+    let countQuery = supabase
       .from('content')
       .select('*', { count: 'exact', head: true });
+    
+    // Apply same filters to count query
+    if (channel) {
+      countQuery = countQuery.eq('channel_id', channel);
+    }
+    
+    if (category) {
+      countQuery = countQuery.eq('category', category);
+    }
+    
+    if (status) {
+      if (status === 'published') {
+        countQuery = countQuery.eq('is_published', true);
+      } else if (status === 'draft') {
+        countQuery = countQuery.eq('is_published', false);
+      }
+    }
+    
+    if (search) {
+      countQuery = countQuery.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
+    }
+    
+    // Get total count for pagination
+    const { count } = await countQuery;
     
     // Get paginated results
     const { data: content, error } = await query
@@ -85,7 +116,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
+    
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Database not configured' },
+        { status: 500 }
+      );
+    }
     const body = await request.json();
     
     const {
@@ -173,7 +211,14 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
+    
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Database not configured' },
+        { status: 500 }
+      );
+    }
     const body = await request.json();
     const { id, ...updates } = body;
     
@@ -221,7 +266,14 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
+    
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Database not configured' },
+        { status: 500 }
+      );
+    }
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     

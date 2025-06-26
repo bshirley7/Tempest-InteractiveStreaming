@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { StreamVideo, StreamVideoApi } from '@cloudflare/stream-react';
+import { Stream, StreamPlayerApi } from '@cloudflare/stream-react';
 import { Play, Pause, Volume2, VolumeX, Maximize, Radio, Users, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { ScheduleItem, VideoPlayerState, VideoPlayerConfig } from '@/lib/types';
 import { STREAM_CONFIG } from '@/lib/constants';
+import { cn } from '@/lib/utils';
+import { CampusPulsePlayer } from './CampusPulsePlayer';
 
 interface LiveVideoPlayerProps {
   program: ScheduleItem;
@@ -28,7 +30,7 @@ export function LiveVideoPlayer({
   showChat = true,
   className = '',
 }: LiveVideoPlayerProps) {
-  const streamRef = useRef<StreamVideoApi>(null);
+  const streamRef = useRef<StreamPlayerApi>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -217,6 +219,17 @@ export function LiveVideoPlayer({
     return count.toString();
   };
 
+  // Handle Campus Pulse channel specially
+  if (program.channelId === 'campus-pulse' || program.title?.toLowerCase().includes('campus pulse')) {
+    return (
+      <CampusPulsePlayer 
+        className={className}
+        onExpand={toggleFullscreen}
+        isFullscreen={playerState.isFullscreen}
+      />
+    );
+  }
+
   if (playerState.isError) {
     return (
       <div className={`relative bg-black rounded-lg flex flex-col items-center justify-center min-h-[400px] ${className}`}>
@@ -239,12 +252,12 @@ export function LiveVideoPlayer({
   return (
     <div 
       ref={playerContainerRef}
-      className={`relative bg-black rounded-lg overflow-hidden group ${className}`}
+      className={cn("video-container-16-9 rounded-lg overflow-hidden group", className)}
       onMouseMove={handleMouseMove}
       onMouseLeave={() => playerState.isPlaying && setShowControls(false)}
     >
       {/* Video Stream */}
-      <StreamVideo
+      <Stream
         ref={streamRef}
         src={program.metadata?.cloudflareId || program.contentId || ''}
         controls={false}
@@ -254,8 +267,6 @@ export function LiveVideoPlayer({
         onPlay={handlePlay}
         onPause={handlePause}
         onError={handleError}
-        className="w-full h-full"
-        style={{ aspectRatio: '16/9' }}
       />
 
       {/* Loading Overlay */}

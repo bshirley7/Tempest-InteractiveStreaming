@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cloudflare Stream Test</title>
+</head>
+<body>
+    <h1>Testing Cloudflare Stream</h1>
+    
+    <!-- Test with iframe approach -->
+    <h2>Iframe Test:</h2>
+    <iframe
+        src="https://customer-ydgwaifmhmzkp7in.cloudflarestream.com/87a47a06ad6644dd8aee7e7da21cf212/iframe?poster=https%3A%2F%2Fcustomer-ydgwaifmhmzkp7in.cloudflarestream.com%2F87a47a06ad6644dd8aee7e7da21cf212%2Fthumbnails%2Fthumbnail.jpg%3Ftime%3D%26height%3D600"
+        style="border: none; position: absolute; top: 0; left: 0; height: 100%; width: 100%;"
+        allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+        allowfullscreen="true">
+    </iframe>
+    
+    <!-- Test with stream element -->
+    <h2>Stream Element Test:</h2>
+    <stream 
+        src="87a47a06ad6644dd8aee7e7da21cf212"
+        controls
+        preload="none"
+        style="width: 100%; height: 400px;">
+    </stream>
+    
+    <script data-cfasync="false" defer type="text/javascript" src="https://embed.cloudflarestream.com/embed/sdk.latest.js"></script>
+</body>
+</html>

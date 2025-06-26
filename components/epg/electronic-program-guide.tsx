@@ -33,10 +33,11 @@ type Channel = EPGChannel;
 
 interface EPGProps {
   onChannelSelect: (channelId: string, channelData?: Channel) => void;
+  onChannelDoubleClick?: (channelId: string, channelData?: Channel) => void;
   selectedChannel: string | null;
 }
 
-export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPGProps) {
+export function ElectronicProgramGuide({ onChannelSelect, onChannelDoubleClick, selectedChannel }: EPGProps) {
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [timeSlots, setTimeSlots] = useState<Date[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -215,6 +216,7 @@ export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPG
                       selectedChannel === channel.id && "ring-2 ring-purple-500/50 bg-gradient-to-r from-purple-600/20 via-indigo-500/15 to-blue-500/20"
                     )}
                     onClick={() => onChannelSelect(channel.id, channel)}
+                    onDoubleClick={() => onChannelDoubleClick?.(channel.id, channel)}
                   >
                   <CardContent className="p-0 h-48 relative overflow-hidden">
                     {/* Full-width background logo */}
@@ -392,7 +394,8 @@ export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPG
                     "hover:scale-[1.005]",
                     selectedChannel === channel.id && "bg-gradient-to-r from-purple-600/20 via-indigo-500/15 to-blue-500/20 border-purple-500/50"
                   )}
-                  onClick={() => onChannelSelect(channel.id)}
+                  onClick={() => onChannelSelect(channel.id, channel)}
+                  onDoubleClick={() => onChannelDoubleClick?.(channel.id, channel)}
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
@@ -486,6 +489,7 @@ export function ElectronicProgramGuide({ onChannelSelect, selectedChannel }: EPG
                           )}
                           style={{ width: `${width}px`, minWidth: `${width}px` }}
                           onClick={() => onChannelSelect(channel.id, channel)}
+                    onDoubleClick={() => onChannelDoubleClick?.(channel.id, channel)}
                           initial={{ opacity: 0, scale: 0.95 }}
                           animate={{ opacity: 1, scale: 1 }}
                           transition={{ duration: 0.3, delay: programIndex * 0.05 }}

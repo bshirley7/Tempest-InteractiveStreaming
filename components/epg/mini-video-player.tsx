@@ -48,6 +48,7 @@ interface MiniVideoPlayerProps {
   nextProgram?: Program | null;
   onClose: () => void;
   onExpand?: () => void;
+  onDoubleClick?: () => void;
   className?: string;
 }
 
@@ -57,6 +58,7 @@ export function MiniVideoPlayer({
   nextProgram,
   onClose, 
   onExpand,
+  onDoubleClick,
   className 
 }: MiniVideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(true);
@@ -88,9 +90,9 @@ export function MiniVideoPlayer({
   };
 
   return (
-    <Card className={cn("overflow-hidden shadow-lg", className)}>
+    <Card className={cn("overflow-hidden shadow-lg border-0", className)}>
       <CardContent className="p-0">
-        <div className="flex h-48">
+        <div className="flex h-64" onDoubleClick={onDoubleClick}>
           {/* Video Player */}
           <div className="w-80 relative bg-black">
             {/* Video Content */}
@@ -214,52 +216,55 @@ export function MiniVideoPlayer({
           </div>
 
           {/* Program Information */}
-          <div className="flex-1 p-4 bg-background">
+          <div className="flex-1 px-2 pt-1 pb-2 bg-background">
             <div className="h-full flex flex-col">
               {/* Channel Header */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-start w-full">
                   {channel.logo ? (
                     <img
                       src={channel.logo}
                       alt={channel.name}
-                      className="w-8 h-8 rounded object-cover"
+                      className="w-40 h-16 object-fit"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.style.display = 'none';
                         const parent = target.parentElement;
                         if (parent) {
                           const fallback = document.createElement('div');
-                          fallback.className = 'w-8 h-8 rounded bg-primary/20 flex items-center justify-center text-primary text-xs font-bold';
-                          fallback.textContent = channel.name.split(' ').map(word => word[0]).join('').substring(0, 2).toUpperCase();
+                          fallback.className = 'w-24 h-16 rounded bg-primary/20 flex flex-col items-center justify-center text-primary font-bold';
+                          fallback.innerHTML = `
+                            <div class="text-lg">${channel.name.split(' ').map(word => word[0]).join('').substring(0, 3).toUpperCase()}</div>
+                            <div class="text-xs mt-1">${channel.name}</div>
+                          `;
                           parent.appendChild(fallback);
                         }
                       }}
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded bg-primary/20 flex items-center justify-center text-primary text-xs font-bold">
-                      {channel.name.split(' ').map(word => word[0]).join('').substring(0, 2).toUpperCase()}
+                    <div className="w-24 h-16 rounded bg-primary/20 flex flex-col items-center justify-center text-primary font-bold">
+                      <div className="text-lg">{channel.name.split(' ').map(word => word[0]).join('').substring(0, 3).toUpperCase()}</div>
+                      <div className="text-xs mt-1 text-center px-2">{channel.name}</div>
                     </div>
                   )}
-                  <div>
-                    <h3 className="font-semibold text-lg">{channel.name}</h3>
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      <span>Channel {channel.number}</span>
-                      {channel.isHD && <Badge variant="secondary" className="text-xs">HD</Badge>}
-                    </div>
-                  </div>
                 </div>
               </div>
 
               {/* Current Program */}
               {currentProgram ? (
                 <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-2">
+                  <div className="flex items-center space-x-1 mb-1">
                     {currentProgram.isLive && (
                       <Badge variant="destructive" className="animate-pulse">
                         <Radio className="h-3 w-3 mr-1" />
                         LIVE
                       </Badge>
+                    )}
+                    <Badge variant="outline" className="text-xs">
+                      CH {channel.number}
+                    </Badge>
+                    {channel.isHD && (
+                      <Badge variant="secondary" className="text-xs">HD</Badge>
                     )}
                     {currentProgram.isNew && (
                       <Badge variant="secondary">NEW</Badge>
@@ -272,14 +277,14 @@ export function MiniVideoPlayer({
                     )}
                   </div>
 
-                  <h4 className="font-bold text-xl mb-2">{currentProgram.title}</h4>
+                  <h4 className="font-bold text-lg mb-1">{currentProgram.title}</h4>
                   
-                  <p className="text-muted-foreground text-sm leading-relaxed mb-4 line-clamp-3">
+                  <p className="text-muted-foreground text-sm leading-relaxed mb-2 overflow-hidden">
                     {currentProgram.description}
                   </p>
 
                   {/* Time Info */}
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center space-x-1 text-muted-foreground">
                         <Clock className="h-4 w-4" />
@@ -304,7 +309,7 @@ export function MiniVideoPlayer({
 
                   {/* Next Program */}
                   {nextProgram && (
-                    <div className="mt-4 pt-4 border-t">
+                    <div className="mt-2 pt-2 border-t">
                       <div className="flex items-center space-x-2 mb-1">
                         <span className="text-sm font-medium text-muted-foreground">Up Next:</span>
                         <span className="text-sm text-muted-foreground">

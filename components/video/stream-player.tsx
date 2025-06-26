@@ -2,6 +2,7 @@
 
 import { HBOMaxPlayer } from './hbo-max-player';
 import { CloudflareStreamPlayer } from './cloudflare-stream-player';
+import { CampusPulsePlayer } from './CampusPulsePlayer';
 import { isCloudflareStreamConfigured } from '@/lib/cloudflare';
 import { useState, useRef, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
@@ -30,7 +31,17 @@ interface StreamPlayerProps {
 }
 
 export function StreamPlayer({ channelId, channelData, currentProgram, nextProgram }: StreamPlayerProps) {
-  // Use HBO Max style player as the primary interface
+  // Handle Campus Pulse channel specially
+  if (channelId === 'campus-pulse' || channelData?.name === 'Campus Pulse' || channelData?.category === 'announcements') {
+    return (
+      <CampusPulsePlayer 
+        className="w-full h-full"
+        isFullscreen={true}
+      />
+    );
+  }
+
+  // Use HBO Max style player as the primary interface for other channels
   return (
     <HBOMaxPlayer
       videoId={channelId}

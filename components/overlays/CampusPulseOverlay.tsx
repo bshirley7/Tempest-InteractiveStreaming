@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { X, ExternalLink, Clock, AlertTriangle, Image } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { supabase } from "@/lib/supabase-client"
+import { supabase } from "@/lib/supabase/client"
 
 export interface CampusPulseNotification {
   id: string
@@ -32,6 +32,7 @@ interface CampusPulseOverlayProps {
   maxNotifications?: number
   showBackgrounds?: boolean
   backgroundOpacity?: number
+  showCloseButton?: boolean
 }
 
 export function CampusPulseOverlay({
@@ -42,7 +43,8 @@ export function CampusPulseOverlay({
   rotationInterval = 8000,
   maxNotifications = 3,
   showBackgrounds = true,
-  backgroundOpacity = 0.3
+  backgroundOpacity = 0.3,
+  showCloseButton = true
 }: CampusPulseOverlayProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [notifications, setNotifications] = useState<CampusPulseNotification[]>([])
@@ -291,7 +293,7 @@ export function CampusPulseOverlay({
                 </div>
               )}
               
-              {position !== 'fullscreen' && (
+              {position !== 'fullscreen' && showCloseButton && (
                 <Button
                   variant="ghost"
                   size="sm"

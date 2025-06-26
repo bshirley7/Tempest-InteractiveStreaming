@@ -186,6 +186,18 @@ function LivePageContent() {
     setShowMiniPlayer(false);
   };
 
+  const handleDoubleClick = (channelId: string, channelData?: any) => {
+    // First select the channel if not already selected
+    if (selectedChannel !== channelId) {
+      handleChannelSelect(channelId, channelData);
+    }
+    // Then immediately expand to fullscreen
+    setTimeout(() => {
+      setIsFullscreen(true);
+      setShowMiniPlayer(false);
+    }, 100);
+  };
+
   const handleExitFullscreen = () => {
     setIsFullscreen(false);
     setShowMiniPlayer(true);
@@ -270,13 +282,14 @@ function LivePageContent() {
           <div className="h-[calc(100vh-4rem)] flex flex-col">
             {/* Mini Video Player - Appears above EPG when channel selected */}
             {showMiniPlayer && selectedChannelData && (
-              <div className="border-b bg-background">
+              <div className="border-b bg-background p-4">
                 <MiniVideoPlayer
                   channel={selectedChannelData}
                   currentProgram={currentProgram}
                   nextProgram={nextProgram}
                   onClose={handleCloseMiniPlayer}
                   onExpand={handleExpandToFullPlayer}
+                  onDoubleClick={handleExpandToFullPlayer}
                 />
               </div>
             )}
@@ -284,10 +297,11 @@ function LivePageContent() {
             {/* Electronic Program Guide - Full Width */}
             <div className={cn(
               "flex-1 bg-background",
-              showMiniPlayer ? "h-[calc(100%-12rem)]" : "h-full"
+              showMiniPlayer ? "h-[calc(100%-20rem)]" : "h-full"
             )}>
               <ElectronicProgramGuide 
                 onChannelSelect={handleChannelSelect}
+                onChannelDoubleClick={handleDoubleClick}
                 selectedChannel={selectedChannel}
               />
             </div>

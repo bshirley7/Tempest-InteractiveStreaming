@@ -26,7 +26,17 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('content')
-      .select('*')
+      .select(`
+        *,
+        content_channels!left(
+          channel:channels(
+            id,
+            name,
+            slug,
+            category
+          )
+        )
+      `)
       .order('created_at', { ascending: false });
     
     // Apply filters

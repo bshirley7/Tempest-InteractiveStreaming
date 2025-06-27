@@ -15,20 +15,33 @@ export async function GET(
       );
     }
 
-    // Fetch content by ID with channel information
+    // Fetch content by ID with channel information through junction table
     const { data: content, error } = await supabase
       .from('content')
       .select(`
         *,
-        channels(name, slug, category)
+        content_channels!left(
+          channel:channels(
+            id,
+            name,
+            slug,
+            category
+          )
+        )
       `)
       .eq('id', params.id)
       .single();
     
     if (error) {
       console.error('Content fetch error:', error);
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
       return NextResponse.json(
-        { error: 'Failed to fetch content' },
+        { error: 'Failed to fetch content', details: error.message },
         { status: 500 }
       );
     }

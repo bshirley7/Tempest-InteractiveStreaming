@@ -25,12 +25,22 @@ interface VODContent {
 }
 
 // Transform database content to VOD format
-function transformContentToVOD(content: VideoContent & { channels?: any }): VODContent {
+function transformContentToVOD(content: VideoContent & { content_channels?: any[] }): VODContent {
   // Extract channel name from the relationship or infer from category/genre
-  const channelName = content.channels?.name || 
-                     content.category || 
-                     content.genre || 
-                     'General';
+  // Handle both old format (channels) and new format (content_channels array)
+  let channelName = 'General';
+  
+  if (content.content_channels && content.content_channels.length > 0) {
+    // New format: array of channel relationships
+    channelName = content.content_channels[0].channel?.name || 'General';
+  } else if ((content as any).channels?.name) {
+    // Old format: direct channel relationship
+    channelName = (content as any).channels.name;
+  } else if (content.category) {
+    channelName = content.category;
+  } else if (content.genre) {
+    channelName = content.genre;
+  }
 
   // Clean up the title by removing file extensions and common patterns
   const cleanTitle = content.title

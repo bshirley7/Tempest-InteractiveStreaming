@@ -6,7 +6,7 @@ import { VODGrid } from './vod-grid';
 import { VODRow } from './vod-row';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Play, Info, AlertCircle, Loader2 } from 'lucide-react';
+import { Play, Info, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { VideoContent } from '@/lib/types';
 
@@ -109,6 +109,8 @@ export function VODLibrary() {
   const [trending, setTrending] = useState<VODContent[]>([]);
   const [educational, setEducational] = useState<VODContent[]>([]);
   const [documentaries, setDocumentaries] = useState<VODContent[]>([]);
+  const [adExamples, setAdExamples] = useState<VODContent[]>([]);
+  const [showAds, setShowAds] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -119,28 +121,40 @@ export function VODLibrary() {
         setLoading(true);
         setError(null);
 
-        // Fetch all published content
-        const response = await fetch('/api/content?status=published&limit=200');
+        // Fetch published content (educational videos only by default)
+        const contentResponse = await fetch('/api/content?status=published&content_type=content&limit=200');
         
-        if (!response.ok) {
-          throw new Error(`Failed to fetch content: ${response.statusText}`);
+        if (!contentResponse.ok) {
+          throw new Error(`Failed to fetch content: ${contentResponse.statusText}`);
         }
 
-        const result = await response.json();
+        const contentResult = await contentResponse.json();
         
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to fetch content');
+        if (!contentResult.success) {
+          throw new Error(contentResult.error || 'Failed to fetch content');
         }
 
-        const content: VideoContent[] = result.data || [];
+        const content: VideoContent[] = contentResult.data || [];
         
-        if (content.length === 0) {
+        // Also fetch ad examples for showcase
+        const adResponse = await fetch('/api/content?status=published&content_type=advertisement&limit=50');
+        let adExamples: VideoContent[] = [];
+        
+        if (adResponse.ok) {
+          const adResult = await adResponse.json();
+          if (adResult.success) {
+            adExamples = adResult.data || [];
+          }
+        }
+        
+        if (content.length === 0 && adExamples.length === 0) {
           setError('No published content available. Please check if content has been synced and published.');
           return;
         }
 
         // Transform content and organize by categories
         const transformedContent = content.map(item => transformContentToVOD(item));
+        const transformedAds = adExamples.map(item => transformContentToVOD(item));
 
         // Set hero content (featured content first, then latest)
         const featuredContent = content
@@ -177,6 +191,9 @@ export function VODLibrary() {
           ) || item.channel.toLowerCase().includes('documentary')
         ).slice(0, 8);
         setDocumentaries(documentaryItems.length > 0 ? documentaryItems : transformedContent.slice(12, 20));
+
+        // Set ad examples for showcase
+        setAdExamples(transformedAds);
 
       } catch (err) {
         console.error('Error fetching content:', err);
@@ -317,16 +334,62 @@ export function VODLibrary() {
           />
         )}
 
+        {/* Ad Examples Toggle Section */}
+        {adExamples.length > 0 && (
+          <div className="mb-12">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-2">Advertisement Examples</h2>
+                <p className="text-gray-400">Showcase of our advertising content ({adExamples.length} examples)</p>
+              </div>
+              <Button
+                onClick={() => setShowAds(!showAds)}
+                variant="outline"
+                className="border-brand-purple/50 text-white bg-black/30 backdrop-blur-sm hover:bg-brand-gradient hover:border-transparent hover:shadow-glow-purple transition-all duration-300"
+              >
+                {showAds ? (
+                  <>
+                    <EyeOff className="w-4 h-4 mr-2" />
+                    Hide Examples
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-4 h-4 mr-2" />
+                    Show Examples
+                  </>
+                )}
+              </Button>
+            </div>
+            
+            {showAds && (
+              <div className="bg-gradient-to-br from-brand-purple/10 to-brand-indigo/10 backdrop-blur-sm rounded-xl p-6 border border-brand-purple/20">
+                <div className="mb-4">
+                  <Badge className="bg-brand-gradient text-white border-none px-3 py-1">
+                    Advertisement Showcase
+                  </Badge>
+                </div>
+                <VODGrid
+                  content={adExamples}
+                  variant="default"
+                  aspectRatio="16:9"
+                  columns={{ mobile: 2, tablet: 3, desktop: 4 }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Debug info in development */}
         {process.env.NODE_ENV === 'development' && (
           <div className="mt-8 p-4 bg-gray-900 rounded-lg">
             <h3 className="text-sm font-semibold text-gray-400 mb-2">Debug Info</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-gray-500">
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-xs text-gray-500">
               <div>Hero: {heroContent.length}</div>
               <div>Just Added: {justAdded.length}</div>
               <div>Trending: {trending.length}</div>
               <div>Educational: {educational.length}</div>
               <div>Documentaries: {documentaries.length}</div>
+              <div>Ad Examples: {adExamples.length}</div>
             </div>
           </div>
         )}

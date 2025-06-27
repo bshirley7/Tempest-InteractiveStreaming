@@ -4,8 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { VODPlayer } from '@/components/video/VODPlayer';
-import { VideoPlayerWithInteractions } from '@/components/video/VideoPlayerWithInteractions';
+import { VideoPlayerWithCustomAds } from '@/components/video/VideoPlayerWithCustomAds';
 import { VideoContent } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -16,6 +15,7 @@ export default function VODWatchPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showControls, setShowControls] = useState(false);
+  const [controlsTimeout, setControlsTimeout] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -53,7 +53,28 @@ export default function VODWatchPage() {
 
   const handleMouseMove = () => {
     setShowControls(true);
+    
+    // Clear existing timeout
+    if (controlsTimeout) {
+      clearTimeout(controlsTimeout);
+    }
+    
+    // Set new timeout to hide controls after 3 seconds
+    const timeout = setTimeout(() => {
+      setShowControls(false);
+    }, 3000);
+    
+    setControlsTimeout(timeout);
   };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (controlsTimeout) {
+        clearTimeout(controlsTimeout);
+      }
+    };
+  }, [controlsTimeout]);
 
   if (loading) {
     return (
@@ -104,20 +125,16 @@ export default function VODWatchPage() {
         </Button>
       </div>
 
-      {/* Video Player with Unified Interactions */}
-      <VideoPlayerWithInteractions
-        content={content}
-        viewerCount={Math.floor(Math.random() * 500) + 100}
-        showControls={showControls}
-        viewerRole="viewer" // Could be dynamic based on user auth
+      {/* Video Player with Custom Ads Support */}
+      <VideoPlayerWithCustomAds
+        video={content}
         className="w-full h-full"
-      >
-        <VODPlayer
-          video={content}
-          className="w-full h-full"
-          autoPlay={true}
-        />
-      </VideoPlayerWithInteractions>
+        autoPlay={false}
+        onEnded={() => {
+          // Optionally redirect or show related content
+          console.log('Video completed');
+        }}
+      />
     </div>
   );
 }

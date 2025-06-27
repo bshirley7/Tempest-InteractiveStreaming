@@ -13,6 +13,9 @@ const config: Config = {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic':
           'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
+        'brand-gradient': 'linear-gradient(135deg, #A855F7 0%, #6366F1 50%, #3B82F6 100%)',
+        'brand-gradient-subtle': 'linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(99, 102, 241, 0.1) 50%, rgba(59, 130, 246, 0.1) 100%)',
+        'brand-gradient-dark': 'linear-gradient(135deg, rgba(168, 85, 247, 0.8) 0%, rgba(99, 102, 241, 0.8) 50%, rgba(59, 130, 246, 0.8) 100%)',
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -20,6 +23,14 @@ const config: Config = {
         sm: 'calc(var(--radius) - 4px)',
       },
       colors: {
+        // Brand colors
+        brand: {
+          purple: '#A855F7',
+          indigo: '#6366F1',
+          blue: '#3B82F6',
+          gradient: 'linear-gradient(135deg, #A855F7 0%, #6366F1 50%, #3B82F6 100%)',
+        },
+        // System colors
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {
@@ -82,6 +93,12 @@ const config: Config = {
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+      },
+      boxShadow: {
+        'glow-brand': '0 0 40px rgba(168, 85, 247, 0.5), 0 0 80px rgba(99, 102, 241, 0.3)',
+        'glow-purple': '0 0 30px rgba(168, 85, 247, 0.6)',
+        'glow-indigo': '0 0 30px rgba(99, 102, 241, 0.6)',
+        'glow-blue': '0 0 30px rgba(59, 130, 246, 0.6)',
       },
     },
   },

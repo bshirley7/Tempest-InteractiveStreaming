@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
     const search = searchParams.get('search');
     const status = searchParams.get('status');
+    const contentType = searchParams.get('content_type'); // 'content', 'advertisement', or null for all
     
     const offset = (page - 1) * limit;
     
@@ -56,6 +57,14 @@ export async function GET(request: NextRequest) {
       }
     }
     
+    if (contentType && contentType !== 'all') {
+      query = query.eq('content_type', contentType);
+    } else if (!contentType) {
+      // Default to only content (educational videos) unless explicitly requesting all or ads
+      query = query.eq('content_type', 'content');
+    }
+    // If contentType === 'all', don't add any filter (fetch all types)
+    
     if (search) {
       query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
     }
@@ -81,6 +90,14 @@ export async function GET(request: NextRequest) {
         countQuery = countQuery.eq('is_published', false);
       }
     }
+    
+    if (contentType && contentType !== 'all') {
+      countQuery = countQuery.eq('content_type', contentType);
+    } else if (!contentType) {
+      // Default to only content (educational videos) unless explicitly requesting all or ads
+      countQuery = countQuery.eq('content_type', 'content');
+    }
+    // If contentType === 'all', don't add any filter (fetch all types)
     
     if (search) {
       countQuery = countQuery.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
@@ -152,6 +169,7 @@ export async function POST(request: NextRequest) {
       learning_objectives = [],
       prerequisites = [],
       tags = [],
+      content_type = 'content', // Default to 'content' type
       is_featured = false,
       is_published = false,
       metadata = {},
@@ -184,6 +202,7 @@ export async function POST(request: NextRequest) {
         learning_objectives,
         prerequisites,
         tags,
+        content_type,
         is_featured,
         is_published,
         sync_status: 'manual',

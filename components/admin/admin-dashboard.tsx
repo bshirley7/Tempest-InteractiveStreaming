@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChannelManagement } from './channel-management';
 import { ContentManagement } from './content-management';
 import { InteractionManagement } from './interaction-management';
@@ -14,6 +15,8 @@ import { SimpleUpload } from './simple-upload';
 import { SyncDashboard } from './sync-dashboard';
 import { SimpleChannelManager } from './simple-channel-manager';
 import { AdvertisingDashboard } from './advertising-dashboard';
+import { ContentTypeManager } from './content-type-manager';
+import AdTestPage from '../../app/admin/ad-test/page';
 import { 
   Tv, 
   Video, 
@@ -25,11 +28,13 @@ import {
   Clock,
   TrendingUp,
   Upload,
-  Target
+  Target,
+  ChevronDown
 } from 'lucide-react';
 
 export function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
+  const [activeSubTab, setActiveSubTab] = useState('');
 
   // Mock data for overview
   const stats = {
@@ -41,6 +46,96 @@ export function AdminDashboard() {
     avgEngagement: 89
   };
 
+  // Navigation structure
+  const navItems = {
+    overview: { label: 'Overview', icon: BarChart3, hasSubMenu: false },
+    channels: { 
+      label: 'Channels', 
+      icon: Tv, 
+      hasSubMenu: true,
+      subItems: {
+        'channels-create': { label: 'Create & Manage', icon: Tv },
+        'channels-assign': { label: 'Video Assignment', icon: Video }
+      }
+    },
+    content: { 
+      label: 'Content', 
+      icon: Video, 
+      hasSubMenu: true,
+      subItems: {
+        'content-simple-upload': { label: 'Simple Upload', icon: Upload },
+        'content-bulk-upload': { label: 'Bulk Upload', icon: Upload },
+        'content-management': { label: 'Content Library', icon: Video },
+        'content-sync': { label: 'Sync Status', icon: Clock },
+        'content-types': { label: 'Content Types', icon: Target }
+      }
+    },
+    advertising: { 
+      label: 'Advertising', 
+      icon: Target, 
+      hasSubMenu: true,
+      subItems: {
+        'advertising-dashboard': { label: 'Campaigns', icon: Target },
+        'advertising-test': { label: 'Ad Testing', icon: Play }
+      }
+    },
+    campus: { 
+      label: 'Campus', 
+      icon: Megaphone, 
+      hasSubMenu: true,
+      subItems: {
+        'campus-updates': { label: 'Announcements', icon: Megaphone },
+        'campus-interactions': { label: 'Interactions', icon: MessageSquare }
+      }
+    }
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    // Set default sub-tab for sections with submenus
+    if (navItems[tab as keyof typeof navItems]?.hasSubMenu) {
+      const firstSubItem = Object.keys(navItems[tab as keyof typeof navItems].subItems || {})[0];
+      setActiveSubTab(firstSubItem || '');
+    } else {
+      setActiveSubTab('');
+    }
+  };
+
+  const handleSubTabChange = (subTab: string) => {
+    setActiveSubTab(subTab);
+  };
+
+  const renderSubNavigation = () => {
+    const currentNav = navItems[activeTab as keyof typeof navItems];
+    if (!currentNav?.hasSubMenu || !currentNav.subItems) return null;
+
+    return (
+      <div className="mb-6">
+        <div className="border-b">
+          <nav className="flex space-x-8">
+            {Object.entries(currentNav.subItems).map(([key, item]) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={key}
+                  onClick={() => handleSubTabChange(key)}
+                  className={`flex items-center space-x-2 py-3 px-1 border-b-2 text-sm font-medium transition-colors ${
+                    activeSubTab === key
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="mb-8">
@@ -50,20 +145,22 @@ export function AdminDashboard() {
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-10">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="channels">Channels</TabsTrigger>
-          <TabsTrigger value="channel-manager">Channel Manager</TabsTrigger>
-          <TabsTrigger value="simple-upload">Simple Upload</TabsTrigger>
-          <TabsTrigger value="bulk-upload">Bulk Upload</TabsTrigger>
-          <TabsTrigger value="sync">Sync Status</TabsTrigger>
-          <TabsTrigger value="updates">Updates</TabsTrigger>
-          <TabsTrigger value="content">Content</TabsTrigger>
-          <TabsTrigger value="advertising">Advertising</TabsTrigger>
-          <TabsTrigger value="interactions">Interactions</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-5">
+          {Object.entries(navItems).map(([key, item]) => {
+            const Icon = item.icon;
+            return (
+              <TabsTrigger key={key} value={key} className="flex items-center space-x-2">
+                <Icon className="w-4 h-4" />
+                <span>{item.label}</span>
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
 
+        {renderSubNavigation()}
+
+        {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <Card>
@@ -184,44 +281,36 @@ export function AdminDashboard() {
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
                   <button 
-                    onClick={() => setActiveTab('channels')}
+                    onClick={() => handleTabChange('channels')}
                     className="p-4 border rounded-lg hover:bg-muted transition-colors text-left"
                   >
                     <Tv className="h-6 w-6 mb-2 text-primary" />
-                    <p className="font-medium">Create Channel</p>
-                    <p className="text-xs text-muted-foreground">Set up a new streaming channel</p>
+                    <p className="font-medium">Channels</p>
+                    <p className="text-xs text-muted-foreground">Create and manage channels</p>
                   </button>
                   <button 
-                    onClick={() => setActiveTab('channel-manager')}
+                    onClick={() => handleTabChange('content')}
                     className="p-4 border rounded-lg hover:bg-muted transition-colors text-left"
                   >
                     <Video className="h-6 w-6 mb-2 text-primary" />
-                    <p className="font-medium">Assign Videos</p>
-                    <p className="text-xs text-muted-foreground">Simple channel assignment tool</p>
+                    <p className="font-medium">Content</p>
+                    <p className="text-xs text-muted-foreground">Upload and manage videos</p>
                   </button>
                   <button 
-                    onClick={() => setActiveTab('bulk-upload')}
-                    className="p-4 border rounded-lg hover:bg-muted transition-colors text-left"
-                  >
-                    <Upload className="h-6 w-6 mb-2 text-primary" />
-                    <p className="font-medium">Bulk Upload</p>
-                    <p className="text-xs text-muted-foreground">Upload multiple videos with metadata</p>
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('advertising')}
+                    onClick={() => handleTabChange('advertising')}
                     className="p-4 border rounded-lg hover:bg-muted transition-colors text-left"
                   >
                     <Target className="h-6 w-6 mb-2 text-primary" />
                     <p className="font-medium">Advertising</p>
-                    <p className="text-xs text-muted-foreground">Manage ad campaigns and placements</p>
+                    <p className="text-xs text-muted-foreground">Manage ad campaigns</p>
                   </button>
                   <button 
-                    onClick={() => setActiveTab('updates')}
+                    onClick={() => handleTabChange('campus')}
                     className="p-4 border rounded-lg hover:bg-muted transition-colors text-left"
                   >
                     <Megaphone className="h-6 w-6 mb-2 text-primary" />
-                    <p className="font-medium">Campus Updates</p>
-                    <p className="text-xs text-muted-foreground">Manage campus announcements</p>
+                    <p className="font-medium">Campus</p>
+                    <p className="text-xs text-muted-foreground">Announcements and interactions</p>
                   </button>
                 </div>
               </CardContent>
@@ -229,43 +318,36 @@ export function AdminDashboard() {
           </div>
         </TabsContent>
 
+        {/* Channels Section */}
         <TabsContent value="channels">
-          <ChannelManagement />
+          {activeSubTab === 'channels-create' && <ChannelManagement />}
+          {activeSubTab === 'channels-assign' && <SimpleChannelManager />}
         </TabsContent>
 
-        <TabsContent value="channel-manager">
-          <SimpleChannelManager />
-        </TabsContent>
-
-        <TabsContent value="simple-upload">
-          <SimpleUpload />
-        </TabsContent>
-
-        <TabsContent value="bulk-upload">
-          <BulkUploadPage />
-        </TabsContent>
-
-        <TabsContent value="sync">
-          <SyncDashboard />
-        </TabsContent>
-
-        <TabsContent value="updates">
-          <UpdatesManagement />
-        </TabsContent>
-
+        {/* Content Section */}
         <TabsContent value="content">
-          <div className="space-y-6">
-            <ContentLibrarySync />
-            <ContentManagement />
-          </div>
+          {activeSubTab === 'content-simple-upload' && <SimpleUpload />}
+          {activeSubTab === 'content-bulk-upload' && <BulkUploadPage />}
+          {activeSubTab === 'content-management' && (
+            <div className="space-y-6">
+              <ContentLibrarySync />
+              <ContentManagement />
+            </div>
+          )}
+          {activeSubTab === 'content-sync' && <SyncDashboard />}
+          {activeSubTab === 'content-types' && <ContentTypeManager />}
         </TabsContent>
 
+        {/* Advertising Section */}
         <TabsContent value="advertising">
-          <AdvertisingDashboard />
+          {activeSubTab === 'advertising-dashboard' && <AdvertisingDashboard />}
+          {activeSubTab === 'advertising-test' && <AdTestPage />}
         </TabsContent>
 
-        <TabsContent value="interactions">
-          <InteractionManagement />
+        {/* Campus Section */}
+        <TabsContent value="campus">
+          {activeSubTab === 'campus-updates' && <UpdatesManagement />}
+          {activeSubTab === 'campus-interactions' && <InteractionManagement />}
         </TabsContent>
 
       </Tabs>

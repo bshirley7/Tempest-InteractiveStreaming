@@ -46,6 +46,7 @@ export interface VideoContent {
   learning_objectives: string[];
   prerequisites: string[];
   tags: string[];
+  content_type: 'content' | 'advertisement';
   is_featured: boolean;
   is_published: boolean;
   is_live: boolean;

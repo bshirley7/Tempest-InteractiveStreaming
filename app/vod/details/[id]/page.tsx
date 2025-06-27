@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Play, ArrowLeft, Clock, Star, Eye, Share2 } from 'lucide-react';
+import { Play, ArrowLeft, Clock, Star, Eye, Sparkles, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { VideoContent } from '@/lib/types';
@@ -73,7 +73,7 @@ export default function VODDetailsPage() {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-purple mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
           <p>Loading video details...</p>
         </div>
       </div>
@@ -87,7 +87,7 @@ export default function VODDetailsPage() {
           <h2 className="text-2xl font-bold mb-4">Content Not Found</h2>
           <p className="text-gray-400 mb-6">{error || 'The requested video could not be found.'}</p>
           <Link href="/library">
-            <Button className="bg-brand-gradient hover:shadow-glow-brand">
+            <Button className="bg-brand-gradient hover:shadow-glow-brand transition-all duration-300">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Library
             </Button>
@@ -111,7 +111,11 @@ export default function VODDetailsPage() {
         <div className="absolute bottom-0 left-0 p-8 lg:p-12 max-w-4xl">
           <div className="mb-4">
             <Link href="/library">
-              <Button variant="outline" size="sm" className="mb-4">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mb-4 border-brand-purple/50 text-white bg-black/30 backdrop-blur-sm hover:bg-brand-gradient hover:border-transparent hover:shadow-glow-purple transition-all duration-300"
+              >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Library
               </Button>
@@ -143,16 +147,11 @@ export default function VODDetailsPage() {
 
           <div className="flex items-center gap-4">
             <Link href={`/vod/watch/${content.id}`}>
-              <Button size="lg" className="bg-white text-black hover:bg-gray-200">
+              <Button size="lg" className="bg-brand-gradient hover:shadow-glow-brand transition-all duration-300 text-white font-semibold">
                 <Play className="w-5 h-5 mr-2" fill="currentColor" />
-                Play
+                Play Now
               </Button>
             </Link>
-            
-            <Button size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-black">
-              <Share2 className="w-5 h-5 mr-2" />
-              Share
-            </Button>
           </div>
         </div>
       </div>
@@ -163,9 +162,30 @@ export default function VODDetailsPage() {
           {/* Main Content */}
           <div className="lg:col-span-2">
             <div className="space-y-6">
+              {/* Video Information Badges */}
+              <div className="flex flex-wrap gap-3 mb-6">
+                <Badge className="bg-brand-gradient text-white border-none px-4 py-2 text-sm font-medium">
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  {content.language || 'English'}
+                </Badge>
+                
+                <Badge className="bg-gradient-to-r from-brand-purple to-brand-indigo text-white border-none px-4 py-2 text-sm font-medium">
+                  <BookOpen className="w-4 h-4 mr-2" />
+                  {content.category || 'Education'}
+                </Badge>
+                
+                {content.genre && (
+                  <Badge className="bg-gradient-to-r from-brand-indigo to-brand-blue text-white border-none px-4 py-2 text-sm font-medium">
+                    {content.genre}
+                  </Badge>
+                )}
+              </div>
+
               {/* Description */}
-              <div>
-                <h2 className="text-xl font-semibold mb-3">Description</h2>
+              <div className="bg-gradient-to-br from-gray-900/50 to-gray-800/30 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
+                <h2 className="text-xl font-semibold mb-4 bg-gradient-to-r from-brand-purple to-brand-blue bg-clip-text text-transparent">
+                  Description
+                </h2>
                 <p className="text-gray-300 leading-relaxed">
                   {content.description || 'No description available for this video.'}
                 </p>
@@ -173,11 +193,17 @@ export default function VODDetailsPage() {
 
               {/* Tags */}
               {content.tags && content.tags.length > 0 && (
-                <div>
-                  <h2 className="text-xl font-semibold mb-3">Tags</h2>
+                <div className="bg-gradient-to-br from-gray-900/30 to-gray-800/20 backdrop-blur-sm rounded-xl p-6 border border-gray-700/30">
+                  <h2 className="text-xl font-semibold mb-4 bg-gradient-to-r from-brand-purple to-brand-blue bg-clip-text text-transparent">
+                    Tags
+                  </h2>
                   <div className="flex flex-wrap gap-2">
                     {content.tags.map((tag, index) => (
-                      <Badge key={index} variant="outline">
+                      <Badge 
+                        key={index} 
+                        variant="outline" 
+                        className="border-brand-purple/30 text-gray-300 hover:bg-brand-purple/10 hover:border-brand-purple/50 transition-all duration-300"
+                      >
                         {tag}
                       </Badge>
                     ))}
@@ -187,11 +213,18 @@ export default function VODDetailsPage() {
 
               {/* Learning Objectives */}
               {content.learning_objectives && content.learning_objectives.length > 0 && (
-                <div>
-                  <h2 className="text-xl font-semibold mb-3">Learning Objectives</h2>
-                  <ul className="list-disc list-inside space-y-2 text-gray-300">
+                <div className="bg-gradient-to-br from-brand-purple/10 to-brand-indigo/10 backdrop-blur-sm rounded-xl p-6 border border-brand-purple/20">
+                  <h2 className="text-xl font-semibold mb-4 bg-gradient-to-r from-brand-purple to-brand-blue bg-clip-text text-transparent">
+                    Learning Objectives
+                  </h2>
+                  <ul className="space-y-3">
                     {content.learning_objectives.map((objective, index) => (
-                      <li key={index}>{objective}</li>
+                      <li key={index} className="flex items-start">
+                        <span className="inline-block w-6 h-6 rounded-full bg-brand-gradient text-white text-xs font-bold flex items-center justify-center mr-3 mt-0.5 flex-shrink-0">
+                          {index + 1}
+                        </span>
+                        <span className="text-gray-300">{objective}</span>
+                      </li>
                     ))}
                   </ul>
                 </div>
@@ -201,54 +234,67 @@ export default function VODDetailsPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Video Info */}
-            <div className="bg-gray-900 rounded-lg p-6">
-              <h3 className="text-lg font-semibold mb-4">Video Information</h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Language:</span>
-                  <span>{content.language || 'English'}</span>
-                </div>
-                
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Category:</span>
-                  <span>{content.category || 'Education'}</span>
-                </div>
-                
-                {content.genre && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Genre:</span>
-                    <span>{content.genre}</span>
-                  </div>
-                )}
-                
-                {content.difficulty_level && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Difficulty:</span>
-                    <span>{content.difficulty_level}</span>
-                  </div>
-                )}
-
-                {content.instructor && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Instructor:</span>
-                    <span>{content.instructor}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
             {/* Prerequisites */}
             {content.prerequisites && content.prerequisites.length > 0 && (
-              <div className="bg-gray-900 rounded-lg p-6">
-                <h3 className="text-lg font-semibold mb-4">Prerequisites</h3>
-                <ul className="list-disc list-inside space-y-2 text-sm text-gray-300">
+              <div className="bg-gradient-to-br from-gray-900/50 to-gray-800/30 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
+                <h3 className="text-lg font-semibold mb-4 bg-gradient-to-r from-brand-purple to-brand-blue bg-clip-text text-transparent">
+                  Prerequisites
+                </h3>
+                <ul className="space-y-3">
                   {content.prerequisites.map((prereq, index) => (
-                    <li key={index}>{prereq}</li>
+                    <li key={index} className="flex items-start">
+                      <span className="text-brand-purple mr-2 mt-1">▸</span>
+                      <span className="text-sm text-gray-300">{prereq}</span>
+                    </li>
                   ))}
                 </ul>
               </div>
             )}
+
+            {/* Video Stats Card */}
+            <div className="bg-gradient-to-br from-brand-purple/20 to-brand-indigo/20 backdrop-blur-sm rounded-xl p-6 border border-brand-purple/30">
+              <h3 className="text-lg font-semibold mb-4 text-white">Video Stats</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-gray-300">
+                    <Clock className="w-4 h-4 text-brand-purple" />
+                    Duration
+                  </span>
+                  <span className="text-white font-medium">{formatDuration(content.duration || 0)}</span>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-gray-300">
+                    <Eye className="w-4 h-4 text-brand-indigo" />
+                    Views
+                  </span>
+                  <span className="text-white font-medium">{formatViews(content.view_count || 1000)}</span>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-gray-300">
+                    <Star className="w-4 h-4 text-yellow-400" />
+                    Rating
+                  </span>
+                  <span className="text-white font-medium">4.5/5.0</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Related Content Suggestion */}
+            <div className="bg-gradient-to-br from-gray-900/30 to-gray-800/20 backdrop-blur-sm rounded-xl p-6 border border-gray-700/30">
+              <h3 className="text-lg font-semibold mb-4 bg-gradient-to-r from-brand-purple to-brand-blue bg-clip-text text-transparent">
+                Continue Learning
+              </h3>
+              <p className="text-sm text-gray-400 mb-4">
+                Explore more content in {content.category || 'this category'}
+              </p>
+              <Link href="/library">
+                <Button className="w-full bg-brand-gradient hover:shadow-glow-brand transition-all duration-300">
+                  Browse Library
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </div>

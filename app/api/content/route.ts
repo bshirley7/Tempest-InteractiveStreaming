@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { revalidateTag } from 'next/cache';
 
 export async function GET(request: NextRequest) {
@@ -25,10 +26,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('content')
-      .select(`
-        *,
-        channels(name, slug, category)
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
     
     // Apply filters
@@ -116,7 +114,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     
     if (!supabase) {
       return NextResponse.json(
@@ -130,6 +128,7 @@ export async function POST(request: NextRequest) {
       title,
       description,
       channel_id,
+      channel_ids = [],
       cloudflare_video_id,
       thumbnail_url,
       duration,
@@ -161,7 +160,7 @@ export async function POST(request: NextRequest) {
       .insert([{
         title,
         description,
-        channel_id,
+        channel_id: channel_id || (channel_ids.length > 0 ? channel_ids[0] : null),
         cloudflare_video_id,
         thumbnail_url,
         duration,
@@ -191,6 +190,28 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Handle multiple channel relationships
+    if (channel_ids.length > 0) {
+      try {
+        const channelRelationships = channel_ids.map((channelId: string) => ({
+          content_id: content.id,
+          channel_id: channelId
+        }));
+        
+        const { error: channelError } = await supabase
+          .from('content_channels')
+          .insert(channelRelationships);
+          
+        if (channelError) {
+          console.error('Error saving channel relationships:', channelError);
+          // Don't throw error, content was created successfully
+        }
+      } catch (channelError) {
+        console.error('Channel relationship error:', channelError);
+        // Don't throw error, content was created successfully
+      }
+    }
     
     // Revalidate cache
     revalidateTag('content');
@@ -211,7 +232,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     
     if (!supabase) {
       return NextResponse.json(
@@ -220,7 +241,7 @@ export async function PUT(request: NextRequest) {
       );
     }
     const body = await request.json();
-    const { id, ...updates } = body;
+    const { id, channel_ids, ...updates } = body;
     
     if (!id) {
       return NextResponse.json(
@@ -246,6 +267,41 @@ export async function PUT(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Handle multiple channel relationships if provided
+    if (channel_ids && Array.isArray(channel_ids)) {
+      try {
+        // Remove existing relationships
+        const { error: deleteError } = await supabase
+          .from('content_channels')
+          .delete()
+          .eq('content_id', id);
+          
+        if (deleteError) {
+          console.error('Error deleting existing channel relationships:', deleteError);
+        }
+        
+        // Add new relationships if any channels selected
+        if (channel_ids.length > 0) {
+          const channelRelationships = channel_ids.map((channelId: string) => ({
+            content_id: id,
+            channel_id: channelId
+          }));
+          
+          const { error: channelError } = await supabase
+            .from('content_channels')
+            .insert(channelRelationships);
+            
+          if (channelError) {
+            console.error('Error saving channel relationships:', channelError);
+            // Don't throw error, content was updated successfully
+          }
+        }
+      } catch (channelError) {
+        console.error('Channel relationship error:', channelError);
+        // Don't throw error, content was updated successfully
+      }
+    }
     
     // Revalidate cache
     revalidateTag('content');
@@ -266,7 +322,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     
     if (!supabase) {
       return NextResponse.json(

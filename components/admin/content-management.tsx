@@ -47,6 +47,13 @@ interface Content {
   channels?: {
     name: string;
   };
+  content_channels?: Array<{
+    channel_id: string;
+    channels?: {
+      id: string;
+      name: string;
+    };
+  }>;
 }
 
 interface Channel {
@@ -84,7 +91,11 @@ export function ContentManagement() {
   const [editingContent, setEditingContent] = useState<Content | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedThumbnailFile, setSelectedThumbnailFile] = useState<File | null>(null);
+  const [selectedMetadataFile, setSelectedMetadataFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string>('');
+  // Removed customCategories and customGenres - now using database
+  const [newCategory, setNewCategory] = useState('');
+  const [newGenre, setNewGenre] = useState('');
   const [activeTab, setActiveTab] = useState('content-library');
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
@@ -95,7 +106,7 @@ export function ContentManagement() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    channel_id: '',
+    channel_ids: [] as string[], // Changed to array for multiple channels
     category: '',
     genre: '',
     keywords: '',
@@ -119,29 +130,10 @@ export function ContentManagement() {
   });
   const { uploading, progress, uploadFile } = useStreamUpload();
 
-  const categories = [
-    'Lecture',
-    'Tutorial',
-    'Seminar',
-    'Workshop',
-    'Conference',
-    'Documentary',
-    'Interview',
-    'Presentation',
-    'Discussion',
-    'Event'
-  ];
-
-  const genres = [
-    'Academic',
-    'Research',
-    'Educational',
-    'Training',
-    'Demonstration',
-    'Case Study',
-    'Review',
-    'Analysis'
-  ];
+  const [categories, setCategories] = useState<string[]>([]);
+  const [genres, setGenres] = useState<string[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [loadingGenres, setLoadingGenres] = useState(true);
 
   const difficultyLevels = [
     'Beginner',
@@ -153,6 +145,8 @@ export function ContentManagement() {
   useEffect(() => {
     fetchContent();
     fetchChannels();
+    fetchCategories();
+    fetchGenres();
     
     // Log component initialization
     console.log('Content Management initialized');
@@ -185,8 +179,12 @@ export function ContentManagement() {
         .from('content')
         .select(`
           *,
-          channels (
-            name
+          content_channels!left (
+            channel_id,
+            channels (
+              id,
+              name
+            )
           )
         `)
         .order('created_at', { ascending: false });
@@ -197,6 +195,11 @@ export function ContentManagement() {
       }
       
       console.log('Content fetched successfully:', data?.length || 0, 'items');
+      // Log first item to see structure
+      if (data && data.length > 0) {
+        console.log('First content item structure:', data[0]);
+        console.log('Content channels:', data[0].content_channels);
+      }
       setContent(data || []);
     } catch (error) {
       console.error('Error fetching content:', error);
@@ -228,6 +231,58 @@ export function ContentManagement() {
       setChannels(data || []);
     } catch (error) {
       console.error('Error fetching channels:', error);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      if (!supabase) {
+        setLoadingCategories(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('categories')
+        .select('name')
+        .order('is_default', { ascending: false }) // Show default categories first
+        .order('name');
+
+      if (error) {
+        console.error('Error fetching categories:', error);
+        return;
+      }
+      
+      setCategories(data?.map(c => c.name) || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
+  const fetchGenres = async () => {
+    try {
+      if (!supabase) {
+        setLoadingGenres(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('genres')
+        .select('name')
+        .order('is_default', { ascending: false }) // Show default genres first
+        .order('name');
+
+      if (error) {
+        console.error('Error fetching genres:', error);
+        return;
+      }
+      
+      setGenres(data?.map(g => g.name) || []);
+    } catch (error) {
+      console.error('Error fetching genres:', error);
+    } finally {
+      setLoadingGenres(false);
     }
   };
 
@@ -281,6 +336,152 @@ export function ContentManagement() {
     }));
     
     console.log('Thumbnail file selected:', file.name, file.size);
+  };
+
+  const handleMetadataSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.includes('json') && !file.name.endsWith('.json')) {
+      toast.error('Please select a JSON file');
+      return;
+    }
+
+    // Validate file size (max 1MB)
+    const maxSize = 1024 * 1024; // 1MB
+    if (file.size > maxSize) {
+      toast.error('Metadata file must be less than 1MB');
+      return;
+    }
+
+    setSelectedMetadataFile(file);
+    
+    // Parse and apply metadata
+    try {
+      const text = await file.text();
+      const parsedMetadata = JSON.parse(text);
+      
+      // Apply metadata to form
+      setFormData(prev => ({
+        ...prev,
+        title: parsedMetadata.title || prev.title,
+        description: parsedMetadata.description || prev.description,
+        category: parsedMetadata.category || prev.category,
+        genre: parsedMetadata.genre || prev.genre,
+        keywords: Array.isArray(parsedMetadata.keywords) 
+          ? parsedMetadata.keywords.join(', ')
+          : parsedMetadata.keywords || prev.keywords,
+        language: parsedMetadata.language || prev.language,
+        instructor: parsedMetadata.author || parsedMetadata.instructor || prev.instructor,
+        difficulty_level: parsedMetadata.difficulty_level || prev.difficulty_level,
+        target_audience: parsedMetadata.target_audience || prev.target_audience,
+        learning_objectives: Array.isArray(parsedMetadata.learning_objectives)
+          ? parsedMetadata.learning_objectives.join(', ')
+          : parsedMetadata.learning_objectives || prev.learning_objectives,
+        prerequisites: Array.isArray(parsedMetadata.prerequisites)
+          ? parsedMetadata.prerequisites.join(', ')
+          : parsedMetadata.prerequisites || prev.prerequisites,
+        tags: Array.isArray(parsedMetadata.tags)
+          ? parsedMetadata.tags.join(', ')
+          : parsedMetadata.tags || prev.tags,
+        // Handle thumbnail from JSON
+        thumbnail_url: parsedMetadata.thumbnail || parsedMetadata.thumbnail_url || prev.thumbnail_url,
+      }));
+
+      // Set thumbnail preview if provided in JSON
+      if (parsedMetadata.thumbnail || parsedMetadata.thumbnail_url) {
+        setThumbnailPreview(parsedMetadata.thumbnail || parsedMetadata.thumbnail_url);
+        setFormData(prev => ({
+          ...prev,
+          thumbnail_source: 'url'
+        }));
+      }
+      
+      toast.success('Metadata imported successfully');
+      console.log('Metadata file imported:', file.name, parsedMetadata);
+    } catch (error) {
+      console.error('Error parsing metadata file:', error);
+      toast.error('Failed to parse metadata file. Please check the JSON format.');
+    }
+  };
+
+  const addCustomCategory = async () => {
+    if (!newCategory.trim() || categories.includes(newCategory)) {
+      return;
+    }
+
+    try {
+      if (!supabase) {
+        toast.error('Database not configured');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('categories')
+        .insert({
+          name: newCategory.trim(),
+          description: `Custom category created by user`,
+          is_default: false
+        });
+
+      if (error) {
+        if (error.code === '23505') { // Unique constraint violation
+          toast.error('Category already exists');
+        } else {
+          throw error;
+        }
+        return;
+      }
+
+      // Update local state
+      setCategories(prev => [...prev, newCategory.trim()]);
+      setFormData(prev => ({ ...prev, category: newCategory.trim() }));
+      setNewCategory('');
+      toast.success(`Category "${newCategory}" added and saved`);
+    } catch (error) {
+      console.error('Error adding category:', error);
+      toast.error('Failed to save category');
+    }
+  };
+
+  const addCustomGenre = async () => {
+    if (!newGenre.trim() || genres.includes(newGenre)) {
+      return;
+    }
+
+    try {
+      if (!supabase) {
+        toast.error('Database not configured');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('genres')
+        .insert({
+          name: newGenre.trim(),
+          description: `Custom genre created by user`,
+          is_default: false
+        });
+
+      if (error) {
+        if (error.code === '23505') { // Unique constraint violation
+          toast.error('Genre already exists');
+        } else {
+          throw error;
+        }
+        return;
+      }
+
+      // Update local state
+      setGenres(prev => [...prev, newGenre.trim()]);
+      setFormData(prev => ({ ...prev, genre: newGenre.trim() }));
+      setNewGenre('');
+      toast.success(`Genre "${newGenre}" added and saved`);
+    } catch (error) {
+      console.error('Error adding genre:', error);
+      toast.error('Failed to save genre');
+    }
   };
 
   const uploadThumbnail = async (): Promise<string | null> => {
@@ -355,7 +556,7 @@ export function ContentManagement() {
       const contentData = {
         title: formData.title,
         description: formData.description || null,
-        channel_id: formData.channel_id || null,
+        channel_id: formData.channel_ids.length > 0 ? formData.channel_ids[0] : null, // For backward compatibility, use first channel
         cloudflare_video_id: cloudflareVideoId,
         category: formData.category || null,
         genre: formData.genre || null,
@@ -386,27 +587,47 @@ export function ContentManagement() {
         }
       };
 
+      // Use API route for content creation/update to handle channel relationships properly
+      console.log('Saving content and channel relationships via API...');
+      
+      const apiData = {
+        ...contentData,
+        channel_ids: formData.channel_ids
+      };
+      
+      let response;
       if (editingContent) {
         // Update existing content
-        const { error } = await supabase
-          .from('content')
-          .update({
-            ...contentData,
+        response = await fetch('/api/content', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: editingContent.id,
+            ...apiData,
             updated_at: new Date().toISOString()
-          })
-          .eq('id', editingContent.id);
-
-        if (error) throw error;
-        toast.success('Content updated successfully');
+          }),
+        });
       } else {
         // Create new content
-        const { error } = await supabase
-          .from('content')
-          .insert(contentData);
-
-        if (error) throw error;
-        toast.success('Content created successfully');
+        response = await fetch('/api/content', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(apiData),
+        });
       }
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save content');
+      }
+      
+      const result = await response.json();
+      console.log('Content and channels saved successfully:', result);
+      toast.success(editingContent ? 'Content updated successfully' : 'Content created successfully');
 
       // Reset form and close dialog
       resetForm();
@@ -426,7 +647,7 @@ export function ContentManagement() {
     setFormData({
       title: '',
       description: '',
-      channel_id: '',
+      channel_ids: [],
       category: '',
       genre: '',
       keywords: '',
@@ -444,15 +665,28 @@ export function ContentManagement() {
     });
     setSelectedFile(null);
     setSelectedThumbnailFile(null);
+    setSelectedMetadataFile(null);
     setThumbnailPreview('');
+    setNewCategory('');
+    setNewGenre('');
   };
 
   const handleEdit = (contentItem: Content) => {
     setEditingContent(contentItem);
+    
+    // Extract channel IDs from content_channels relationship
+    const channelIds = contentItem.content_channels?.map(cc => cc.channel_id) || [];
+    console.log('Loading content for edit:', {
+      contentId: contentItem.id,
+      title: contentItem.title,
+      contentChannels: contentItem.content_channels,
+      extractedChannelIds: channelIds
+    });
+    
     setFormData({
       title: contentItem.title,
       description: contentItem.description || '',
-      channel_id: '', // Would need to fetch channel_id from content
+      channel_ids: channelIds,
       category: contentItem.category || '',
       genre: contentItem.genre || '',
       keywords: contentItem.keywords.join(', '),
@@ -469,6 +703,9 @@ export function ContentManagement() {
       is_published: contentItem.is_published
     });
     setThumbnailPreview(contentItem.thumbnail_url || '');
+    setSelectedMetadataFile(null); // Clear any previously selected metadata file
+    setNewCategory('');
+    setNewGenre('');
     setIsCreateDialogOpen(true);
   };
 
@@ -839,6 +1076,62 @@ export function ContentManagement() {
                   </Select>
                 </div>
               </div>
+
+              {/* JSON Metadata Import */}
+              <div className="border rounded-lg p-4 bg-muted/20">
+                <div className="flex items-center justify-between mb-3">
+                  <Label htmlFor="metadata">Import Metadata from JSON</Label>
+                  {selectedMetadataFile && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedMetadataFile(null);
+                        toast.info('Metadata file cleared');
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+                <Input
+                  id="metadata"
+                  type="file"
+                  accept=".json,application/json"
+                  onChange={handleMetadataSelect}
+                />
+                {selectedMetadataFile && (
+                  <p className="text-sm text-green-600 mt-2 flex items-center">
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Metadata imported from: {selectedMetadataFile.name}
+                  </p>
+                )}
+                <div className="text-xs text-muted-foreground mt-1 space-y-1">
+                  <p>Upload a JSON file to automatically fill in title, description, keywords, and other metadata</p>
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-blue-600 hover:text-blue-800">View expected JSON format</summary>
+                    <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-x-auto">
+{JSON.stringify({
+  "title": "Sample Video Title",
+  "description": "Detailed description of the video content",
+  "category": "Lecture",
+  "genre": "Educational", 
+  "keywords": ["education", "tutorial", "learning"],
+  "language": "English",
+  "author": "Instructor Name",
+  "instructor": "Dr. Smith",
+  "difficulty_level": "Intermediate",
+  "target_audience": "Graduate students",
+  "learning_objectives": ["Understand concepts", "Apply knowledge"],
+  "prerequisites": ["Basic knowledge", "Previous course"],
+  "tags": ["course", "university", "academic"],
+  "thumbnail": "https://example.com/thumbnail.jpg"
+}, null, 2)}
+                    </pre>
+                  </details>
+                </div>
+              </div>
               
               <div>
                 <Label htmlFor="description">Description</Label>
@@ -851,43 +1144,131 @@ export function ContentManagement() {
                 />
               </div>
               
+              {/* Multiple Channel Selection */}
+              <div>
+                <Label htmlFor="channels">Channels (Optional)</Label>
+                <div className="space-y-2">
+                  <div className="border rounded-lg p-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {channels.map((channel) => (
+                        <div key={channel.id} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id={`channel-${channel.id}`}
+                            checked={formData.channel_ids.includes(channel.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  channel_ids: [...prev.channel_ids, channel.id]
+                                }));
+                              } else {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  channel_ids: prev.channel_ids.filter(id => id !== channel.id)
+                                }));
+                              }
+                            }}
+                            className="rounded border-gray-300 text-primary focus:ring-primary"
+                          />
+                          <Label 
+                            htmlFor={`channel-${channel.id}`}
+                            className="text-sm font-normal cursor-pointer"
+                          >
+                            {channel.name}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                    {channels.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No channels available. Create channels in Channel Management.</p>
+                    )}
+                  </div>
+                  {formData.channel_ids.length > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                      Selected {formData.channel_ids.length} channel{formData.channel_ids.length !== 1 ? 's' : ''}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="category">Category</Label>
-                  <Select
-                    value={formData.category}
-                    onValueChange={(value) => setFormData({ ...formData, category: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-2">
+                    <Select
+                      value={formData.category}
+                      onValueChange={(value) => setFormData({ ...formData, category: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Add new category"
+                        value={newCategory}
+                        onChange={(e) => setNewCategory(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomCategory())}
+                        className="text-sm"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addCustomCategory}
+                        disabled={!newCategory.trim()}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
                 
                 <div>
                   <Label htmlFor="genre">Genre</Label>
-                  <Select
-                    value={formData.genre}
-                    onValueChange={(value) => setFormData({ ...formData, genre: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select genre" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {genres.map((genre) => (
-                        <SelectItem key={genre} value={genre}>
-                          {genre}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-2">
+                    <Select
+                      value={formData.genre}
+                      onValueChange={(value) => setFormData({ ...formData, genre: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select genre" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {genres.map((genre) => (
+                          <SelectItem key={genre} value={genre}>
+                            {genre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Add new genre"
+                        value={newGenre}
+                        onChange={(e) => setNewGenre(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomGenre())}
+                        className="text-sm"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addCustomGenre}
+                        disabled={!newGenre.trim()}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1196,6 +1577,18 @@ export function ContentManagement() {
                           <span>{formatDuration(item.duration)}</span>
                         </div>
                       </div>
+                      
+                      {/* Display associated channels */}
+                      {item.content_channels && item.content_channels.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          <span className="text-xs text-muted-foreground">Channels:</span>
+                          {item.content_channels.map((cc, idx) => (
+                            <Badge key={idx} variant="secondary" className="text-xs">
+                              {cc.channels?.name || cc.channel?.name || 'Channel'}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
 
                       {item.thumbnail_url && (
                         <div className="aspect-video bg-muted rounded-md overflow-hidden relative">

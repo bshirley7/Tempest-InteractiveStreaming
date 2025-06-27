@@ -22,9 +22,14 @@ export const isSupabaseConfigured = supabaseUrl &&
  * This handles session management via cookies
  */
 export async function createClient() {
+  // In development, try to create client even if configuration check fails
   if (!isSupabaseConfigured) {
-    console.warn('Supabase is not configured. Server-side features may not work.');
-    return null;
+    console.warn('Supabase configuration check failed, but attempting to create client anyway...');
+    // Don't return null in development - try to create the client
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('Missing required Supabase environment variables');
+      return null;
+    }
   }
 
   const cookieStore = await cookies();

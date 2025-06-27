@@ -26,6 +26,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase/client';
 
 interface VideoFile {
   file: File;
@@ -67,9 +68,11 @@ export default function BulkUploadPage() {
   const [metadataFiles, setMetadataFiles] = useState<{ [key: string]: VideoMetadata }>({});
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loadingChannels, setLoadingChannels] = useState(true);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
   const [formData, setFormData] = useState<UploadFormData>({
-    channel_id: '',
-    category: 'Travel',
+    channel_id: '__no_channel__',
+    category: '',
     is_published: false,
     instructor: '',
     difficulty_level: 'Beginner',
@@ -78,15 +81,11 @@ export default function BulkUploadPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  const categories = [
-    'Travel', 'Education', 'News', 'Sports', 'Entertainment', 'Science', 
-    'Technology', 'Arts', 'Music', 'Discussion', 'Events', 'Documentary'
-  ];
-
-  // Fetch channels from database
+  // Fetch channels and categories from database
   useEffect(() => {
-    async function fetchChannels() {
+    async function fetchData() {
       try {
+        // Fetch channels
         setLoadingChannels(true);
         const response = await fetch('/api/channels');
         if (response.ok) {
@@ -94,18 +93,35 @@ export default function BulkUploadPage() {
           setChannels(data.channels || []);
         } else {
           console.error('Failed to fetch channels');
-          // Fallback to empty array
           setChannels([]);
         }
+        
+        // Fetch categories from database
+        if (supabase) {
+          const { data: categoriesData, error } = await supabase
+            .from('categories')
+            .select('name')
+            .order('is_default', { ascending: false })
+            .order('name');
+            
+          if (!error && categoriesData) {
+            setCategories(categoriesData.map(c => c.name));
+            // Set first category as default
+            if (categoriesData.length > 0) {
+              setFormData(prev => ({ ...prev, category: categoriesData[0].name }));
+            }
+          }
+        }
       } catch (error) {
-        console.error('Error fetching channels:', error);
+        console.error('Error fetching data:', error);
         setChannels([]);
       } finally {
         setLoadingChannels(false);
+        setLoadingCategories(false);
       }
     }
 
-    fetchChannels();
+    fetchData();
   }, []);
 
   // Parse metadata from JSON files
@@ -250,7 +266,7 @@ export default function BulkUploadPage() {
             // Wait for processing
             await new Promise(resolve => setTimeout(resolve, 2000));
 
-            // Update metadata
+            // Update metadata in Cloudflare Stream
             if (video.metadata) {
               try {
                 await fetch(`/api/stream/video/${uid}`, {
@@ -267,8 +283,49 @@ export default function BulkUploadPage() {
                   })
                 });
               } catch (metaError) {
-                console.warn('Failed to update metadata:', metaError);
+                console.warn('Failed to update metadata in Cloudflare Stream:', metaError);
               }
+            }
+
+            // Create content record in Supabase
+            try {
+              const contentData = {
+                title: video.metadata?.title || video.file.name,
+                description: video.metadata?.description || '',
+                channel_id: formData.channel_id === '__no_channel__' ? null : formData.channel_id, // Allow null for no channel
+                cloudflare_video_id: uid,
+                category: formData.category,
+                keywords: video.metadata?.tags || [],
+                language: formData.language,
+                instructor: formData.instructor,
+                difficulty_level: formData.difficulty_level,
+                duration: video.metadata?.duration || 0,
+                is_published: formData.is_published,
+                metadata: {
+                  upload_date: new Date().toISOString(),
+                  original_filename: video.file.name,
+                  file_size: video.file.size,
+                  author: video.metadata?.author || ''
+                }
+              };
+
+              const contentResponse = await fetch('/api/content', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(contentData)
+              });
+
+              if (!contentResponse.ok) {
+                const errorData = await contentResponse.json();
+                console.warn('Failed to create content record in Supabase:', errorData);
+                throw new Error(`Supabase sync failed: ${errorData.error}`);
+              }
+
+              console.log(`Successfully synced video ${uid} to Supabase content table`);
+            } catch (supabaseError) {
+              console.error('Failed to sync to Supabase:', supabaseError);
+              // Don't fail the upload completely, but log the issue
+              // The video is still in Cloudflare Stream even if Supabase sync fails
             }
 
             setVideos(prev => prev.map(v => 
@@ -312,10 +369,6 @@ export default function BulkUploadPage() {
       return;
     }
 
-    if (!formData.channel_id) {
-      toast.error('Please select a channel');
-      return;
-    }
 
     setIsUploading(true);
     setUploadProgress(0);
@@ -382,16 +435,17 @@ export default function BulkUploadPage() {
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
-            <Label htmlFor="channel">Target Channel</Label>
+            <Label htmlFor="channel">Target Channel (Optional)</Label>
             <Select 
               value={formData.channel_id} 
               onValueChange={(value) => setFormData(prev => ({ ...prev, channel_id: value }))}
               disabled={loadingChannels}
             >
               <SelectTrigger>
-                <SelectValue placeholder={loadingChannels ? "Loading channels..." : "Select channel"} />
+                <SelectValue placeholder={loadingChannels ? "Loading channels..." : "Select channel (optional)"} />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="__no_channel__">No channel</SelectItem>
                 {loadingChannels ? (
                   <SelectItem value="loading" disabled>
                     <div className="flex items-center gap-2">
@@ -416,18 +470,33 @@ export default function BulkUploadPage() {
 
           <div>
             <Label htmlFor="category">Category</Label>
-            <Select value={formData.category} onValueChange={(value) => 
-              setFormData(prev => ({ ...prev, category: value }))
-            }>
+            <Select 
+              value={formData.category} 
+              onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+              disabled={loadingCategories}
+            >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder={loadingCategories ? "Loading..." : "Select category"} />
               </SelectTrigger>
               <SelectContent>
-                {categories.map(category => (
-                  <SelectItem key={category} value={category}>
-                    {category}
+                {loadingCategories ? (
+                  <SelectItem value="loading" disabled>
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading categories...
+                    </div>
                   </SelectItem>
-                ))}
+                ) : categories.length === 0 ? (
+                  <SelectItem value="no-categories" disabled>
+                    No categories found
+                  </SelectItem>
+                ) : (
+                  categories.map(category => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>

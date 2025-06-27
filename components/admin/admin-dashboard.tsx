@@ -10,6 +10,10 @@ import { UpdatesManagement } from './updates-management';
 import { AnalyticsDashboard } from './analytics-dashboard';
 import { ContentLibrarySync } from './content-library-sync';
 import BulkUploadPage from '../../app/admin/bulk-upload/page';
+import { SimpleUpload } from './simple-upload';
+import { SyncDashboard } from './sync-dashboard';
+import { SimpleChannelManager } from './simple-channel-manager';
+import { AdvertisingDashboard } from './advertising-dashboard';
 import { 
   Tv, 
   Video, 
@@ -20,7 +24,8 @@ import {
   Play,
   Clock,
   TrendingUp,
-  Upload
+  Upload,
+  Target
 } from 'lucide-react';
 
 export function AdminDashboard() {
@@ -46,12 +51,16 @@ export function AdminDashboard() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-10">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="channels">Channels</TabsTrigger>
+          <TabsTrigger value="channel-manager">Channel Manager</TabsTrigger>
+          <TabsTrigger value="simple-upload">Simple Upload</TabsTrigger>
           <TabsTrigger value="bulk-upload">Bulk Upload</TabsTrigger>
+          <TabsTrigger value="sync">Sync Status</TabsTrigger>
           <TabsTrigger value="updates">Updates</TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
+          <TabsTrigger value="advertising">Advertising</TabsTrigger>
           <TabsTrigger value="interactions">Interactions</TabsTrigger>
         </TabsList>
 
@@ -183,12 +192,12 @@ export function AdminDashboard() {
                     <p className="text-xs text-muted-foreground">Set up a new streaming channel</p>
                   </button>
                   <button 
-                    onClick={() => setActiveTab('updates')}
+                    onClick={() => setActiveTab('channel-manager')}
                     className="p-4 border rounded-lg hover:bg-muted transition-colors text-left"
                   >
-                    <Megaphone className="h-6 w-6 mb-2 text-primary" />
-                    <p className="font-medium">Campus Updates</p>
-                    <p className="text-xs text-muted-foreground">Manage campus announcements</p>
+                    <Video className="h-6 w-6 mb-2 text-primary" />
+                    <p className="font-medium">Assign Videos</p>
+                    <p className="text-xs text-muted-foreground">Simple channel assignment tool</p>
                   </button>
                   <button 
                     onClick={() => setActiveTab('bulk-upload')}
@@ -199,12 +208,20 @@ export function AdminDashboard() {
                     <p className="text-xs text-muted-foreground">Upload multiple videos with metadata</p>
                   </button>
                   <button 
-                    onClick={() => setActiveTab('interactions')}
+                    onClick={() => setActiveTab('advertising')}
                     className="p-4 border rounded-lg hover:bg-muted transition-colors text-left"
                   >
-                    <MessageSquare className="h-6 w-6 mb-2 text-primary" />
-                    <p className="font-medium">Create Poll</p>
-                    <p className="text-xs text-muted-foreground">Engage with your audience</p>
+                    <Target className="h-6 w-6 mb-2 text-primary" />
+                    <p className="font-medium">Advertising</p>
+                    <p className="text-xs text-muted-foreground">Manage ad campaigns and placements</p>
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('updates')}
+                    className="p-4 border rounded-lg hover:bg-muted transition-colors text-left"
+                  >
+                    <Megaphone className="h-6 w-6 mb-2 text-primary" />
+                    <p className="font-medium">Campus Updates</p>
+                    <p className="text-xs text-muted-foreground">Manage campus announcements</p>
                   </button>
                 </div>
               </CardContent>
@@ -216,8 +233,20 @@ export function AdminDashboard() {
           <ChannelManagement />
         </TabsContent>
 
+        <TabsContent value="channel-manager">
+          <SimpleChannelManager />
+        </TabsContent>
+
+        <TabsContent value="simple-upload">
+          <SimpleUpload />
+        </TabsContent>
+
         <TabsContent value="bulk-upload">
           <BulkUploadPage />
+        </TabsContent>
+
+        <TabsContent value="sync">
+          <SyncDashboard />
         </TabsContent>
 
         <TabsContent value="updates">
@@ -229,6 +258,10 @@ export function AdminDashboard() {
             <ContentLibrarySync />
             <ContentManagement />
           </div>
+        </TabsContent>
+
+        <TabsContent value="advertising">
+          <AdvertisingDashboard />
         </TabsContent>
 
         <TabsContent value="interactions">

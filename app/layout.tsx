@@ -9,7 +9,7 @@ import { Inter } from 'next/font/google';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Tempest - Interactive University Streaming',
+  title: 'Tempest - Interactive Streaming Reimagined',
   description: 'Revolutionary streaming platform for universities with real-time engagement and analytics',
   keywords: 'streaming, university, education, interactive, engagement',
   icons: {

@@ -1,0 +1,523 @@
+/*
+  # Advertising System Migration (Final Fix)
+
+  This version explicitly prefixes all column references with table names
+  to avoid ambiguity in RLS policy creation.
+*/
+
+-- Create tables first (same as before but cleaner)
+CREATE TABLE IF NOT EXISTS ad_videos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  description text,
+  cloudflare_video_id text UNIQUE NOT NULL,
+  thumbnail_url text,
+  duration integer NOT NULL,
+  category text DEFAULT 'commercial',
+  advertiser_name text,
+  campaign_id uuid,
+  file_size bigint,
+  is_active boolean DEFAULT true,
+  approval_status text DEFAULT 'pending' CHECK (approval_status IN ('pending', 'approved', 'rejected')),
+  metadata jsonb DEFAULT '{}',
+  created_by uuid,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS ad_campaigns (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  description text,
+  advertiser_name text NOT NULL,
+  start_date timestamptz NOT NULL,
+  end_date timestamptz NOT NULL,
+  budget_limit numeric(10,2),
+  daily_budget_limit numeric(10,2),
+  target_audience jsonb DEFAULT '{}',
+  targeting_rules jsonb DEFAULT '{}',
+  settings jsonb DEFAULT '{}',
+  is_active boolean DEFAULT true,
+  total_impressions bigint DEFAULT 0,
+  total_clicks bigint DEFAULT 0,
+  total_spend numeric(10,2) DEFAULT 0,
+  created_by uuid,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS ad_overlay_assets (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  cloudflare_r2_url text NOT NULL,
+  cloudflare_r2_key text NOT NULL,
+  file_type text NOT NULL,
+  file_size integer,
+  dimensions jsonb,
+  alt_text text,
+  is_active boolean DEFAULT true,
+  created_by uuid,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS ad_placements (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  ad_video_id uuid,
+  campaign_id uuid,
+  overlay_asset_id uuid,
+  placement_type text NOT NULL CHECK (placement_type IN ('pre_roll', 'mid_roll', 'end_roll')),
+  target_type text NOT NULL CHECK (target_type IN ('content', 'channel', 'global')),
+  target_id uuid,
+  ad_copy text,
+  call_to_action text,
+  click_url text,
+  display_duration integer DEFAULT 30,
+  skip_after_seconds integer DEFAULT 5,
+  priority integer DEFAULT 1,
+  frequency_cap integer DEFAULT 3,
+  weight integer DEFAULT 1,
+  start_time time,
+  end_time time,
+  days_of_week integer[],
+  is_active boolean DEFAULT true,
+  total_impressions bigint DEFAULT 0,
+  total_clicks bigint DEFAULT 0,
+  total_completions bigint DEFAULT 0,
+  total_skips bigint DEFAULT 0,
+  created_by uuid,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS ad_analytics (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  placement_id uuid,
+  ad_video_id uuid,
+  campaign_id uuid,
+  user_id text,
+  content_id uuid,
+  channel_id uuid,
+  event_type text NOT NULL CHECK (event_type IN ('impression', 'click', 'completion', 'skip', 'error')),
+  event_data jsonb DEFAULT '{}',
+  timestamp timestamptz DEFAULT now(),
+  session_id text,
+  user_agent text,
+  ip_address inet,
+  referrer text,
+  watch_time_seconds integer
+);
+
+CREATE TABLE IF NOT EXISTS user_ad_frequency (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id text NOT NULL,
+  placement_id uuid,
+  date date NOT NULL DEFAULT CURRENT_DATE,
+  impression_count integer DEFAULT 0,
+  last_impression timestamptz,
+  UNIQUE(user_id, placement_id, date)
+);
+
+-- Enable RLS on all tables
+ALTER TABLE ad_videos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ad_campaigns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ad_overlay_assets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ad_placements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ad_analytics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_ad_frequency ENABLE ROW LEVEL SECURITY;
+
+-- Add foreign key constraints after table creation
+ALTER TABLE ad_videos 
+ADD CONSTRAINT fk_ad_videos_campaign_id 
+FOREIGN KEY (campaign_id) REFERENCES ad_campaigns(id) ON DELETE SET NULL;
+
+ALTER TABLE ad_placements 
+ADD CONSTRAINT fk_ad_placements_ad_video_id 
+FOREIGN KEY (ad_video_id) REFERENCES ad_videos(id) ON DELETE CASCADE;
+
+ALTER TABLE ad_placements 
+ADD CONSTRAINT fk_ad_placements_campaign_id 
+FOREIGN KEY (campaign_id) REFERENCES ad_campaigns(id) ON DELETE CASCADE;
+
+ALTER TABLE ad_placements 
+ADD CONSTRAINT fk_ad_placements_overlay_asset_id 
+FOREIGN KEY (overlay_asset_id) REFERENCES ad_overlay_assets(id) ON DELETE SET NULL;
+
+ALTER TABLE ad_analytics 
+ADD CONSTRAINT fk_ad_analytics_placement_id 
+FOREIGN KEY (placement_id) REFERENCES ad_placements(id) ON DELETE CASCADE;
+
+ALTER TABLE ad_analytics 
+ADD CONSTRAINT fk_ad_analytics_ad_video_id 
+FOREIGN KEY (ad_video_id) REFERENCES ad_videos(id) ON DELETE CASCADE;
+
+ALTER TABLE ad_analytics 
+ADD CONSTRAINT fk_ad_analytics_campaign_id 
+FOREIGN KEY (campaign_id) REFERENCES ad_campaigns(id) ON DELETE CASCADE;
+
+ALTER TABLE user_ad_frequency 
+ADD CONSTRAINT fk_user_ad_frequency_placement_id 
+FOREIGN KEY (placement_id) REFERENCES ad_placements(id) ON DELETE CASCADE;
+
+-- Conditionally add foreign keys to existing tables
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'content') THEN
+        ALTER TABLE ad_analytics 
+        ADD CONSTRAINT fk_ad_analytics_content_id 
+        FOREIGN KEY (content_id) REFERENCES content(id) ON DELETE SET NULL;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'channels') THEN
+        ALTER TABLE ad_analytics 
+        ADD CONSTRAINT fk_ad_analytics_channel_id 
+        FOREIGN KEY (channel_id) REFERENCES channels(id) ON DELETE SET NULL;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_profiles') THEN
+        ALTER TABLE ad_videos 
+        ADD CONSTRAINT fk_ad_videos_created_by 
+        FOREIGN KEY (created_by) REFERENCES user_profiles(id);
+
+        ALTER TABLE ad_campaigns 
+        ADD CONSTRAINT fk_ad_campaigns_created_by 
+        FOREIGN KEY (created_by) REFERENCES user_profiles(id);
+
+        ALTER TABLE ad_overlay_assets 
+        ADD CONSTRAINT fk_ad_overlay_assets_created_by 
+        FOREIGN KEY (created_by) REFERENCES user_profiles(id);
+
+        ALTER TABLE ad_placements 
+        ADD CONSTRAINT fk_ad_placements_created_by 
+        FOREIGN KEY (created_by) REFERENCES user_profiles(id);
+    END IF;
+END $$;
+
+-- Create RLS policies with explicit table prefixes
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_profiles') THEN
+        -- Verify the user_profiles table structure
+        IF EXISTS (SELECT 1 FROM information_schema.columns 
+                  WHERE table_name = 'user_profiles' AND column_name = 'user_id') THEN
+            
+            -- Ad Videos Policies
+            CREATE POLICY "Admins can manage ad videos"
+              ON ad_videos
+              FOR ALL
+              TO authenticated
+              USING (
+                EXISTS (
+                  SELECT 1 FROM user_profiles 
+                  WHERE user_profiles.user_id = COALESCE(
+                    auth.jwt() ->> 'sub',
+                    current_setting('request.jwt.claims', true)::json ->> 'sub',
+                    auth.uid()::text
+                  )
+                  AND user_profiles.role IN ('admin', 'faculty')
+                )
+              );
+
+            -- Ad Campaigns Policies
+            CREATE POLICY "Admins can manage ad campaigns"
+              ON ad_campaigns
+              FOR ALL
+              TO authenticated
+              USING (
+                EXISTS (
+                  SELECT 1 FROM user_profiles 
+                  WHERE user_profiles.user_id = COALESCE(
+                    auth.jwt() ->> 'sub',
+                    current_setting('request.jwt.claims', true)::json ->> 'sub',
+                    auth.uid()::text
+                  )
+                  AND user_profiles.role IN ('admin', 'faculty')
+                )
+              );
+
+            -- Ad Overlay Assets Policies
+            CREATE POLICY "Admins can manage ad overlay assets"
+              ON ad_overlay_assets
+              FOR ALL
+              TO authenticated
+              USING (
+                EXISTS (
+                  SELECT 1 FROM user_profiles 
+                  WHERE user_profiles.user_id = COALESCE(
+                    auth.jwt() ->> 'sub',
+                    current_setting('request.jwt.claims', true)::json ->> 'sub',
+                    auth.uid()::text
+                  )
+                  AND user_profiles.role IN ('admin', 'faculty')
+                )
+              );
+
+            -- Ad Placements Policies
+            CREATE POLICY "Admins can manage ad placements"
+              ON ad_placements
+              FOR ALL
+              TO authenticated
+              USING (
+                EXISTS (
+                  SELECT 1 FROM user_profiles 
+                  WHERE user_profiles.user_id = COALESCE(
+                    auth.jwt() ->> 'sub',
+                    current_setting('request.jwt.claims', true)::json ->> 'sub',
+                    auth.uid()::text
+                  )
+                  AND user_profiles.role IN ('admin', 'faculty')
+                )
+              );
+
+            -- Ad Analytics Policies
+            CREATE POLICY "Admins can read ad analytics"
+              ON ad_analytics
+              FOR SELECT
+              TO authenticated
+              USING (
+                EXISTS (
+                  SELECT 1 FROM user_profiles 
+                  WHERE user_profiles.user_id = COALESCE(
+                    auth.jwt() ->> 'sub',
+                    current_setting('request.jwt.claims', true)::json ->> 'sub',
+                    auth.uid()::text
+                  )
+                  AND user_profiles.role IN ('admin', 'faculty')
+                )
+              );
+
+            -- User Ad Frequency Policies
+            CREATE POLICY "Users can manage their own ad frequency"
+              ON user_ad_frequency
+              FOR ALL
+              TO authenticated
+              USING (
+                user_ad_frequency.user_id = COALESCE(
+                  auth.jwt() ->> 'sub',
+                  current_setting('request.jwt.claims', true)::json ->> 'sub',
+                  auth.uid()::text
+                )
+              );
+
+        ELSE
+            RAISE NOTICE 'user_profiles table exists but user_id column not found - using fallback policies';
+            -- Fallback policies
+            CREATE POLICY "Authenticated users can manage ad videos"
+              ON ad_videos FOR ALL TO authenticated USING (true);
+            CREATE POLICY "Authenticated users can manage ad campaigns"
+              ON ad_campaigns FOR ALL TO authenticated USING (true);
+            CREATE POLICY "Authenticated users can manage ad overlay assets"
+              ON ad_overlay_assets FOR ALL TO authenticated USING (true);
+            CREATE POLICY "Authenticated users can manage ad placements"
+              ON ad_placements FOR ALL TO authenticated USING (true);
+            CREATE POLICY "Authenticated users can read ad analytics"
+              ON ad_analytics FOR SELECT TO authenticated USING (true);
+            CREATE POLICY "Authenticated users can manage ad frequency"
+              ON user_ad_frequency FOR ALL TO authenticated USING (true);
+        END IF;
+    ELSE
+        RAISE NOTICE 'user_profiles table not found - using fallback policies';
+        -- Fallback policies when user_profiles doesn't exist
+        CREATE POLICY "Authenticated users can manage ad videos"
+          ON ad_videos FOR ALL TO authenticated USING (true);
+        CREATE POLICY "Authenticated users can manage ad campaigns"
+          ON ad_campaigns FOR ALL TO authenticated USING (true);
+        CREATE POLICY "Authenticated users can manage ad overlay assets"
+          ON ad_overlay_assets FOR ALL TO authenticated USING (true);
+        CREATE POLICY "Authenticated users can manage ad placements"
+          ON ad_placements FOR ALL TO authenticated USING (true);
+        CREATE POLICY "Authenticated users can read ad analytics"
+          ON ad_analytics FOR SELECT TO authenticated USING (true);
+        CREATE POLICY "Authenticated users can manage ad frequency"
+          ON user_ad_frequency FOR ALL TO authenticated USING (true);
+    END IF;
+END $$;
+
+-- Public policies for ad serving
+CREATE POLICY "Public can read active ad placements for serving"
+  ON ad_placements
+  FOR SELECT
+  TO authenticated
+  USING (ad_placements.is_active = true);
+
+CREATE POLICY "Users can insert their own ad analytics"
+  ON ad_analytics
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    ad_analytics.user_id = COALESCE(
+      auth.jwt() ->> 'sub',
+      current_setting('request.jwt.claims', true)::json ->> 'sub',
+      auth.uid()::text
+    )
+    OR ad_analytics.user_id IS NULL
+  );
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_ad_videos_campaign_id ON ad_videos(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_ad_videos_active ON ad_videos(is_active);
+CREATE INDEX IF NOT EXISTS idx_ad_videos_cloudflare_id ON ad_videos(cloudflare_video_id);
+CREATE INDEX IF NOT EXISTS idx_ad_campaigns_active ON ad_campaigns(is_active);
+CREATE INDEX IF NOT EXISTS idx_ad_campaigns_dates ON ad_campaigns(start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_ad_overlay_assets_active ON ad_overlay_assets(is_active);
+CREATE INDEX IF NOT EXISTS idx_ad_placements_target ON ad_placements(target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_ad_placements_type ON ad_placements(placement_type);
+CREATE INDEX IF NOT EXISTS idx_ad_placements_active ON ad_placements(is_active);
+CREATE INDEX IF NOT EXISTS idx_ad_placements_priority ON ad_placements(priority DESC);
+CREATE INDEX IF NOT EXISTS idx_ad_analytics_timestamp ON ad_analytics(timestamp);
+CREATE INDEX IF NOT EXISTS idx_ad_analytics_placement ON ad_analytics(placement_id);
+CREATE INDEX IF NOT EXISTS idx_ad_analytics_user ON ad_analytics(user_id);
+CREATE INDEX IF NOT EXISTS idx_ad_analytics_event ON ad_analytics(event_type);
+CREATE INDEX IF NOT EXISTS idx_user_ad_frequency_user_date ON user_ad_frequency(user_id, date);
+
+-- Create triggers if the function exists
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'update_updated_at_column') THEN
+        CREATE TRIGGER update_ad_videos_updated_at 
+          BEFORE UPDATE ON ad_videos 
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+        CREATE TRIGGER update_ad_campaigns_updated_at 
+          BEFORE UPDATE ON ad_campaigns 
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+        CREATE TRIGGER update_ad_overlay_assets_updated_at 
+          BEFORE UPDATE ON ad_overlay_assets 
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+        CREATE TRIGGER update_ad_placements_updated_at 
+          BEFORE UPDATE ON ad_placements 
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
+
+-- Ad serving functions
+CREATE OR REPLACE FUNCTION get_applicable_ads(
+  p_content_id uuid DEFAULT NULL,
+  p_channel_id uuid DEFAULT NULL,
+  p_placement_type text DEFAULT 'pre_roll',
+  p_user_id text DEFAULT NULL
+)
+RETURNS TABLE (
+  placement_id uuid,
+  ad_video_id uuid,
+  cloudflare_video_id text,
+  overlay_asset_id uuid,
+  overlay_url text,
+  ad_copy text,
+  call_to_action text,
+  click_url text,
+  display_duration integer,
+  skip_after_seconds integer,
+  priority integer,
+  weight integer
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    ap.id as placement_id,
+    ap.ad_video_id,
+    av.cloudflare_video_id,
+    ap.overlay_asset_id,
+    oa.cloudflare_r2_url as overlay_url,
+    ap.ad_copy,
+    ap.call_to_action,
+    ap.click_url,
+    ap.display_duration,
+    ap.skip_after_seconds,
+    ap.priority,
+    ap.weight
+  FROM ad_placements ap
+  JOIN ad_videos av ON ap.ad_video_id = av.id
+  JOIN ad_campaigns ac ON ap.campaign_id = ac.id
+  LEFT JOIN ad_overlay_assets oa ON ap.overlay_asset_id = oa.id
+  WHERE 
+    ap.is_active = true
+    AND av.is_active = true
+    AND av.approval_status = 'approved'
+    AND ac.is_active = true
+    AND ac.start_date <= now()
+    AND ac.end_date >= now()
+    AND ap.placement_type = p_placement_type
+    AND (
+      (ap.target_type = 'global') OR
+      (ap.target_type = 'content' AND ap.target_id = p_content_id) OR
+      (ap.target_type = 'channel' AND ap.target_id = p_channel_id)
+    )
+    AND (
+      ap.start_time IS NULL OR 
+      ap.end_time IS NULL OR 
+      (CURRENT_TIME BETWEEN ap.start_time AND ap.end_time)
+    )
+    AND (
+      ap.days_of_week IS NULL OR 
+      EXTRACT(DOW FROM now()) = ANY(ap.days_of_week)
+    )
+    AND (
+      p_user_id IS NULL OR
+      NOT EXISTS (
+        SELECT 1 FROM user_ad_frequency uaf 
+        WHERE uaf.user_id = p_user_id 
+        AND uaf.placement_id = ap.id 
+        AND uaf.date = CURRENT_DATE 
+        AND uaf.impression_count >= ap.frequency_cap
+      )
+    )
+  ORDER BY ap.priority DESC, ap.weight DESC, RANDOM();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION record_ad_analytics(
+  p_placement_id uuid,
+  p_event_type text,
+  p_user_id text DEFAULT NULL,
+  p_content_id uuid DEFAULT NULL,
+  p_channel_id uuid DEFAULT NULL,
+  p_session_id text DEFAULT NULL,
+  p_user_agent text DEFAULT NULL,
+  p_ip_address text DEFAULT NULL,
+  p_watch_time_seconds integer DEFAULT NULL,
+  p_event_data jsonb DEFAULT '{}'
+)
+RETURNS uuid AS $$
+DECLARE
+  v_analytics_id uuid;
+  v_ad_video_id uuid;
+  v_campaign_id uuid;
+BEGIN
+  SELECT ap.ad_video_id, ap.campaign_id 
+  INTO v_ad_video_id, v_campaign_id
+  FROM ad_placements ap 
+  WHERE ap.id = p_placement_id;
+  
+  INSERT INTO ad_analytics (
+    placement_id, ad_video_id, campaign_id, user_id, content_id, channel_id,
+    event_type, event_data, session_id, user_agent, ip_address, watch_time_seconds
+  ) VALUES (
+    p_placement_id, v_ad_video_id, v_campaign_id, p_user_id, p_content_id, p_channel_id,
+    p_event_type, p_event_data, p_session_id, p_user_agent, p_ip_address::inet, p_watch_time_seconds
+  ) RETURNING id INTO v_analytics_id;
+  
+  IF p_event_type = 'impression' AND p_user_id IS NOT NULL THEN
+    INSERT INTO user_ad_frequency (user_id, placement_id, date, impression_count, last_impression)
+    VALUES (p_user_id, p_placement_id, CURRENT_DATE, 1, now())
+    ON CONFLICT (user_id, placement_id, date)
+    DO UPDATE SET 
+      impression_count = user_ad_frequency.impression_count + 1,
+      last_impression = now();
+  END IF;
+  
+  IF p_event_type = 'impression' THEN
+    UPDATE ad_placements SET total_impressions = total_impressions + 1 WHERE id = p_placement_id;
+    UPDATE ad_campaigns SET total_impressions = total_impressions + 1 WHERE id = v_campaign_id;
+  ELSIF p_event_type = 'click' THEN
+    UPDATE ad_placements SET total_clicks = total_clicks + 1 WHERE id = p_placement_id;
+    UPDATE ad_campaigns SET total_clicks = total_clicks + 1 WHERE id = v_campaign_id;
+  ELSIF p_event_type = 'completion' THEN
+    UPDATE ad_placements SET total_completions = total_completions + 1 WHERE id = p_placement_id;
+  ELSIF p_event_type = 'skip' THEN
+    UPDATE ad_placements SET total_skips = total_skips + 1 WHERE id = p_placement_id;
+  END IF;
+  
+  RETURN v_analytics_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

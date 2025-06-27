@@ -131,6 +131,11 @@ export async function listStreamVideos(options?: {
 }
 
 /**
+ * Alias for listStreamVideos - backward compatibility
+ */
+export const getStreamVideos = listStreamVideos;
+
+/**
  * Get a specific video from Stream
  */
 export async function getStreamVideo(videoId: string): Promise<StreamVideo> {

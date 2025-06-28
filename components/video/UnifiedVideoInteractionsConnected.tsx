@@ -14,7 +14,6 @@ import {
   ThumbsUp,
   Smile,
   ChevronRight,
-  Users,
   Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -220,23 +219,20 @@ export function UnifiedVideoInteractionsConnected({
       )}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/10">
+          <h2 className="text-lg font-semibold text-white">Interactions</h2>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 text-sm text-gray-300">
-              <Users className="w-4 h-4" />
-              <span>{viewerCount} viewing</span>
-              {isConnected && (
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-              )}
-            </div>
+            {isConnected && (
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="text-white hover:bg-white/10"
+            >
+              <X className="w-4 h-4" />
+            </Button>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            className="text-white hover:bg-white/10"
-          >
-            <X className="w-4 h-4" />
-          </Button>
         </div>
 
         {/* Tabs */}

@@ -4,18 +4,13 @@ import { useState, useEffect } from 'react';
 import { UserButton, useUser, SignInButton } from '@clerk/nextjs';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ThemeToggle } from '@/components/theme-toggle';
 import { 
-  Search, 
-  Bell, 
   Settings, 
-  BarChart3, 
   Menu,
   X,
   Zap,
   Play
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
@@ -26,7 +21,6 @@ export function Header() {
   
   const userHook = isClerkConfigured ? useUser() : null;
   const { isSignedIn } = userHook || { isSignedIn: false };
-  const [searchQuery, setSearchQuery] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -57,7 +51,6 @@ export function Header() {
     { label: 'Live TV', href: '/live', icon: Zap },
     { label: 'Library', href: '/library', icon: Play },
     { label: 'Admin', href: '/admin', icon: Settings },
-    { label: 'Analytics', href: '/analytics', icon: BarChart3 },
   ];
 
   return (
@@ -111,34 +104,8 @@ export function Header() {
 
           {/* Right Section */}
           <div className="flex items-center space-x-3">
-            {/* Search Button */}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="hover:bg-white/10 text-white p-2"
-            >
-              <Search className="h-5 w-5" />
-            </Button>
-
-            {/* Theme Toggle */}
-            <ThemeToggle />
-
             {isClerkConfigured && isSignedIn ? (
               <>
-                {/* Notifications */}
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="relative hover:bg-white/10 text-white p-2"
-                >
-                  <Bell className="h-5 w-5" />
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs flex items-center justify-center"
-                  >
-                    3
-                  </Badge>
-                </Button>
 
                 {/* User Button */}
                 <UserButton 

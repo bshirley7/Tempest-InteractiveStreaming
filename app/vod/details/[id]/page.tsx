@@ -202,7 +202,7 @@ export default function VODDetailsPage() {
                       <Badge 
                         key={index} 
                         variant="outline" 
-                        className="border-brand-purple/30 text-gray-300 hover:bg-brand-purple/10 hover:border-brand-purple/50 transition-all duration-300"
+                        className="border-brand-purple/40 text-gray-300 hover:bg-brand-purple/30 hover:border-brand-purple/50 transition-all duration-300"
                       >
                         {tag}
                       </Badge>
@@ -252,7 +252,7 @@ export default function VODDetailsPage() {
             )}
 
             {/* Video Stats Card */}
-            <div className="bg-gradient-to-br from-brand-purple/20 to-brand-indigo/20 backdrop-blur-sm rounded-xl p-6 border border-brand-purple/30">
+            <div className="bg-gradient-to-br from-gray-900/20 to-brand-purple/20 backdrop-blur-sm rounded-xl p-6 border border-brand-purple/30">
               <h3 className="text-lg font-semibold mb-4 text-white">Video Stats</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -282,15 +282,15 @@ export default function VODDetailsPage() {
             </div>
 
             {/* Related Content Suggestion */}
-            <div className="bg-gradient-to-br from-gray-900/30 to-gray-800/20 backdrop-blur-sm rounded-xl p-6 border border-gray-700/30">
-              <h3 className="text-lg font-semibold mb-4 bg-gradient-to-r from-brand-purple to-brand-blue bg-clip-text text-transparent">
+            <div className="bg-gradient-to-br from-gray-900/30 to-brand-purple/20 backdrop-blur-sm rounded-xl p-6 border border-gray-700/30">
+              <h3 className="text-lg font-semibold mb-4 bg-gradient-to-r from-brand-purple to-brand-blue bg-clip-text text-white">
                 Continue Learning
               </h3>
               <p className="text-sm text-gray-400 mb-4">
                 Explore more content in {content.category || 'this category'}
               </p>
               <Link href="/library">
-                <Button className="w-full bg-brand-gradient hover:shadow-glow-brand transition-all duration-300">
+                <Button className="w-full bg-brand-gradient text-white hover:shadow-glow-brand transition-all duration-300">
                   Browse Library
                 </Button>
               </Link>

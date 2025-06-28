@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Header } from '@/components/layout/header';
+import { Footer } from '@/components/layout/footer';
 import { VODLibrary } from '@/components/vod/vod-library';
 
 function LibraryPageContent() {
@@ -31,7 +32,7 @@ function LibraryPageContent() {
   // Don't render anything until mounted to prevent hydration mismatch
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/40 to-black flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600"></div>
       </div>
     );
@@ -39,7 +40,7 @@ function LibraryPageContent() {
 
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/40 to-black flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600"></div>
       </div>
     );
@@ -48,7 +49,7 @@ function LibraryPageContent() {
   // If Clerk is not properly configured or user is signed in, allow access to the library
   if (!isClerkConfigured || isSignedIn) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-zinc-950">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-brand-purple/25 to-zinc-950">
         <Header />
         <main className="pt-16">
           <VODLibrary />

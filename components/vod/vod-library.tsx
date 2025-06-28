@@ -379,53 +379,7 @@ export function VODLibrary() {
           </div>
         )}
 
-        {/* Debug info in development */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-8 p-4 bg-gray-900 rounded-lg">
-            <h3 className="text-sm font-semibold text-gray-400 mb-2">Debug Info</h3>
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-xs text-gray-500">
-              <div>Hero: {heroContent.length}</div>
-              <div>Just Added: {justAdded.length}</div>
-              <div>Trending: {trending.length}</div>
-              <div>Educational: {educational.length}</div>
-              <div>Documentaries: {documentaries.length}</div>
-              <div>Ad Examples: {adExamples.length}</div>
-            </div>
-          </div>
-        )}
       </div>
-
-      {/* Footer */}
-      <footer className="bg-black border-t border-gray-800 py-8">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <img 
-                src="/icon.svg" 
-                alt="Tempest" 
-                className="h-8 w-8"
-              />
-              <span className="text-white text-lg font-bold">Tempest University</span>
-            </div>
-            <div className="text-gray-400 text-sm">
-              curated by University Partners
-            </div>
-          </div>
-          
-          <div className="mt-6 text-center text-gray-500 text-sm">
-            © 2024 Tempest University. All rights reserved.
-          </div>
-          
-          <div className="mt-4 flex justify-center space-x-6 text-gray-400 text-sm">
-            <a href="#" className="hover:text-white">Audio Description</a>
-            <a href="#" className="hover:text-white">Do Not Sell or Share My Personal Information</a>
-            <a href="#" className="hover:text-white">Privacy</a>
-            <a href="#" className="hover:text-white">Terms</a>
-            <a href="#" className="hover:text-white">Help</a>
-            <a href="#" className="hover:text-white">Devices</a>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

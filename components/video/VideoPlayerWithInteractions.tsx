@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { UnifiedVideoInteractions } from './UnifiedVideoInteractions';
+import { UnifiedVideoInteractionsConnected } from './UnifiedVideoInteractionsConnected';
 import { getVideoInteractionConfig, VideoContentWithInteractions } from '@/lib/video-interactions';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +15,8 @@ const XCastIcon = ({ className = "w-5 h-5" }: { className?: string }) => (
 interface VideoPlayerWithInteractionsProps {
   children: React.ReactNode;
   content?: VideoContentWithInteractions; // Video content for intelligent detection
+  channelId?: string; // For live streams
+  contentId?: string; // For VOD content
   viewerCount?: number;
   showControls?: boolean;
   viewerRole?: 'viewer' | 'student' | 'instructor' | 'admin';
@@ -33,6 +35,8 @@ interface VideoPlayerWithInteractionsProps {
 export function VideoPlayerWithInteractions({
   children,
   content,
+  channelId,
+  contentId,
   viewerCount = 0,
   showControls = false,
   viewerRole = 'viewer',
@@ -144,7 +148,9 @@ export function VideoPlayerWithInteractions({
       </div>
 
       {/* Unified Interaction System */}
-      <UnifiedVideoInteractions
+      <UnifiedVideoInteractionsConnected
+        channelId={channelId}
+        contentId={contentId}
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
         onClose={() => setSidebarOpen(false)}

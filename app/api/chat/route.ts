@@ -1,0 +1,112 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createServiceClient } from '@/lib/supabase/service';
+
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = createServiceClient();
+    
+    if (!supabase) {
+      return NextResponse.json({ success: false, error: 'Database connection not configured' }, { status: 500 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const channelId = searchParams.get('channel_id');
+    const contentId = searchParams.get('content_id');
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const offset = parseInt(searchParams.get('offset') || '0');
+
+    let query = supabase
+      .from('chat_messages')
+      .select(`
+        id,
+        user_id,
+        message,
+        is_pinned,
+        is_deleted,
+        metadata,
+        created_at,
+        updated_at
+      `)
+      .eq('is_deleted', false)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    // Apply filters
+    if (channelId) {
+      query = query.eq('channel_id', channelId);
+    }
+    if (contentId) {
+      query = query.eq('content_id', contentId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching chat messages:', error);
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, data });
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = createServiceClient();
+    
+    if (!supabase) {
+      return NextResponse.json({ success: false, error: 'Database connection not configured' }, { status: 500 });
+    }
+
+    const body = await request.json();
+    const { 
+      user_id, 
+      message, 
+      channel_id, 
+      content_id, 
+      metadata = {} 
+    } = body;
+
+    // Validation
+    if (!user_id || !message?.trim()) {
+      return NextResponse.json({ success: false, error: 'User ID and message are required' }, { status: 400 });
+    }
+
+    if (!channel_id && !content_id) {
+      return NextResponse.json({ success: false, error: 'Either channel_id or content_id must be provided' }, { status: 400 });
+    }
+
+    // Basic content filtering (you can expand this)
+    const cleanMessage = message.trim();
+    if (cleanMessage.length > 500) {
+      return NextResponse.json({ success: false, error: 'Message too long (max 500 characters)' }, { status: 400 });
+    }
+
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .insert({
+        user_id,
+        message: cleanMessage,
+        channel_id,
+        content_id,
+        metadata,
+        is_pinned: false,
+        is_deleted: false
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating chat message:', error);
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, data });
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+  }
+}

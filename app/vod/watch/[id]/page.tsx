@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { VideoPlayerWithCustomAds } from '@/components/video/VideoPlayerWithCustomAds';
+import { VideoPlayerWithInteractions } from '@/components/video/VideoPlayerWithInteractions';
 import { VideoContent } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -125,16 +126,31 @@ export default function VODWatchPage() {
         </Button>
       </div>
 
-      {/* Video Player with Custom Ads Support */}
-      <VideoPlayerWithCustomAds
-        video={content}
-        className="w-full h-full"
-        autoPlay={false}
-        onEnded={() => {
-          // Optionally redirect or show related content
-          console.log('Video completed');
+      {/* Video Player with Custom Ads Support and Interactions */}
+      <VideoPlayerWithInteractions
+        contentId={content.id}
+        viewerCount={Math.floor(Math.random() * 100) + 10} // Demo viewer count
+        enabledFeatures={{
+          chat: true,
+          reactions: true,
+          polls: true,
+          quiz: true,
+          rating: true,
+          updates: true
         }}
-      />
+        isLive={false}
+        className="w-full h-full"
+      >
+        <VideoPlayerWithCustomAds
+          video={content}
+          className="w-full h-full"
+          autoPlay={false}
+          onEnded={() => {
+            // Optionally redirect or show related content
+            console.log('Video completed');
+          }}
+        />
+      </VideoPlayerWithInteractions>
     </div>
   );
 }

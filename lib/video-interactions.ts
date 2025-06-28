@@ -10,7 +10,7 @@ import { VideoContent } from './types';
 // Enhanced video content type with interaction metadata
 export interface VideoContentWithInteractions extends VideoContent {
   // Live stream specific
-  is_live?: boolean;
+  is_live: boolean;
   stream_status?: 'live' | 'ended' | 'scheduled';
   
   // Interaction availability

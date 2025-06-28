@@ -7,6 +7,7 @@ import { Header } from '@/components/layout/header';
 import { ElectronicProgramGuide } from '@/components/epg/electronic-program-guide';
 import { MiniVideoPlayer } from '@/components/epg/mini-video-player';
 import { StreamPlayer } from '@/components/video/stream-player';
+import { VideoPlayerWithInteractions } from '@/components/video/VideoPlayerWithInteractions';
 import { ChatSidebar } from '@/components/chat/chat-sidebar';
 import { InteractionOverlay } from '@/components/interactions/interaction-overlay';
 import { Button } from '@/components/ui/button';
@@ -238,38 +239,41 @@ function LivePageContent() {
     if (isFullscreen && selectedChannel) {
       return (
         <div className="min-h-screen bg-black">
-          <div className="relative h-screen">
-            <StreamPlayer 
-              channelId={selectedChannel} 
-              channelData={selectedChannelData}
-              currentProgram={currentProgram}
-              nextProgram={nextProgram}
-            />
-            
-            {/* Fullscreen Controls */}
-            <div className="absolute top-4 left-4 z-10">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleExitFullscreen}
-                className="bg-black/50 backdrop-blur text-white hover:bg-black/70"
-              >
-                Exit Fullscreen
-              </Button>
-            </div>
-
-            {/* Interactive Elements Overlay */}
-            <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-black/80 to-transparent">
-              <div className="h-full flex">
-                <div className="flex-1 p-4">
-                  <InteractionOverlay channelId={selectedChannel} />
-                </div>
-                <div className="w-80 p-4">
-                  <ChatSidebar channelId={selectedChannel} />
-                </div>
+          <VideoPlayerWithInteractions
+            channelId={selectedChannel}
+            viewerCount={selectedChannelData?.currentViewers || 0}
+            enabledFeatures={{
+              chat: true,
+              reactions: true,
+              polls: true,
+              quiz: false, // Usually not needed for live streams
+              rating: false, // Usually not needed for live streams
+              updates: true
+            }}
+            isLive={true}
+            className="h-screen"
+          >
+            <div className="relative h-screen">
+              <StreamPlayer 
+                channelId={selectedChannel} 
+                channelData={selectedChannelData}
+                currentProgram={currentProgram}
+                nextProgram={nextProgram}
+              />
+              
+              {/* Fullscreen Controls */}
+              <div className="absolute top-4 left-4 z-10">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleExitFullscreen}
+                  className="bg-black/50 backdrop-blur text-white hover:bg-black/70"
+                >
+                  Exit Fullscreen
+                </Button>
               </div>
             </div>
-          </div>
+          </VideoPlayerWithInteractions>
         </div>
       );
     }

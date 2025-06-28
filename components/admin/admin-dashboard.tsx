@@ -16,6 +16,7 @@ import { SyncDashboard } from './sync-dashboard';
 import { SimpleChannelManager } from './simple-channel-manager';
 import { AdvertisingDashboard } from './advertising-dashboard';
 import { ContentTypeManager } from './content-type-manager';
+import { ContentShelfManager } from './content-shelf-manager';
 import AdTestPage from '../../app/admin/ad-test/page';
 import { 
   Tv, 
@@ -66,6 +67,7 @@ export function AdminDashboard() {
         'content-simple-upload': { label: 'Simple Upload', icon: Upload },
         'content-bulk-upload': { label: 'Bulk Upload', icon: Upload },
         'content-management': { label: 'Content Library', icon: Video },
+        'content-shelves': { label: 'Content Shelves', icon: BarChart3 },
         'content-sync': { label: 'Sync Status', icon: Clock },
         'content-types': { label: 'Content Types', icon: Target }
       }
@@ -334,6 +336,7 @@ export function AdminDashboard() {
               <ContentManagement />
             </div>
           )}
+          {activeSubTab === 'content-shelves' && <ContentShelfManager />}
           {activeSubTab === 'content-sync' && <SyncDashboard />}
           {activeSubTab === 'content-types' && <ContentTypeManager />}
         </TabsContent>

@@ -34,8 +34,8 @@ export function VideoPlayerWithCustomAds({
   const [needsPlay, setNeedsPlay] = useState(!autoPlay);
   const [error, setError] = useState<string | null>(null);
   
-  // Ad states
-  const [enableAds, setEnableAds] = useState(true);
+  // Ad states - disable ads if the video itself is an advertisement
+  const [enableAds, setEnableAds] = useState(video.content_type !== 'advertisement');
   const [currentAd, setCurrentAd] = useState<Ad | null>(null);
   const [isShowingAd, setIsShowingAd] = useState(false);
   const [adTimeLeft, setAdTimeLeft] = useState(0);
@@ -253,6 +253,11 @@ export function VideoPlayerWithCustomAds({
       }
     }, 1000);
   };
+
+  // Update enableAds when video content changes
+  useEffect(() => {
+    setEnableAds(video.content_type !== 'advertisement');
+  }, [video.content_type]);
 
   // Cleanup timer on unmount
   useEffect(() => {

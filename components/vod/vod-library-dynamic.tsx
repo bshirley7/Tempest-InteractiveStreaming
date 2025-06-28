@@ -72,7 +72,7 @@ function transformContentToVOD(content: VideoContent & { content_channels?: any[
   };
 }
 
-export function VODLibrary() {
+export function VODLibraryDynamic() {
   const [shelves, setShelves] = useState<ContentShelf[]>([]);
   const [heroShelf, setHeroShelf] = useState<ContentShelf | null>(null);
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
@@ -80,11 +80,6 @@ export function VODLibrary() {
   const [showAds, setShowAds] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [fallbackMode, setFallbackMode] = useState(false);
-
-  // Fallback data for when content shelves aren't configured yet
-  const [justAdded, setJustAdded] = useState<VODContent[]>([]);
-  const [trending, setTrending] = useState<VODContent[]>([]);
 
   // Fetch content shelves from database
   useEffect(() => {
@@ -93,35 +88,21 @@ export function VODLibrary() {
         setLoading(true);
         setError(null);
 
-        console.log('🔄 Fetching content shelves for /library...');
-
-        // First, try to fetch shelves with content
+        // Fetch shelves with content
         const shelvesResponse = await fetch('/api/content-shelves?include_content=true');
         
         if (!shelvesResponse.ok) {
-          console.warn('⚠️ Content shelves API not available, falling back to content-only mode');
-          await fetchFallbackContent();
-          return;
+          throw new Error(`Failed to fetch shelves: ${shelvesResponse.statusText}`);
         }
 
         const shelvesResult = await shelvesResponse.json();
         
         if (!shelvesResult.success) {
-          console.warn('⚠️ Content shelves not configured, falling back to content-only mode');
-          await fetchFallbackContent();
-          return;
+          throw new Error(shelvesResult.error || 'Failed to fetch shelves');
         }
 
         const allShelves: ContentShelf[] = shelvesResult.data || [];
-        console.log('📦 Loaded', allShelves.length, 'content shelves');
-
-        // If no shelves are configured, fall back to content-only mode
-        if (allShelves.length === 0) {
-          console.log('📝 No content shelves configured, falling back to content-only mode');
-          await fetchFallbackContent();
-          return;
-        }
-
+        
         // Find hero shelf (layout_style === 'hero') or use first shelf with content
         const heroShelfData = allShelves.find(shelf => 
           shelf.layout_style === 'hero' && shelf.content && shelf.content.length > 0
@@ -129,77 +110,15 @@ export function VODLibrary() {
         
         if (heroShelfData) {
           setHeroShelf(heroShelfData);
-          console.log('🎬 Using hero shelf:', heroShelfData.name);
         }
 
-        // Set non-hero shelves that have content
+        // Set non-hero shelves
         const regularShelves = allShelves.filter(shelf => 
           shelf.layout_style !== 'hero' && shelf.content && shelf.content.length > 0
         );
         setShelves(regularShelves);
-        console.log('📚 Loaded', regularShelves.length, 'regular shelves with content');
 
         // Fetch ad examples separately
-        await fetchAdExamples();
-
-      } catch (err) {
-        console.error('❌ Error fetching shelves:', err);
-        console.log('🔄 Falling back to content-only mode...');
-        await fetchFallbackContent();
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const fetchFallbackContent = async () => {
-      try {
-        setFallbackMode(true);
-        console.log('🔄 Loading content in fallback mode...');
-
-        // Fetch published content
-        const contentResponse = await fetch('/api/content?status=published&content_type=content&limit=200');
-        
-        if (!contentResponse.ok) {
-          throw new Error(`Failed to fetch content: ${contentResponse.statusText}`);
-        }
-
-        const contentResult = await contentResponse.json();
-        
-        if (!contentResult.success) {
-          throw new Error(contentResult.error || 'Failed to fetch content');
-        }
-
-        const content: VideoContent[] = contentResult.data || [];
-        console.log('📦 Loaded', content.length, 'content items for fallback');
-
-        if (content.length === 0) {
-          setError('No published content available. Please upload and publish some content first.');
-          return;
-        }
-
-        // Transform content and create basic organization
-        const transformedContent = content.map(item => transformContentToVOD(item));
-
-        // Set just added (latest content)
-        const justAddedItems = transformedContent.slice(0, 12);
-        setJustAdded(justAddedItems);
-
-        // Set trending (most viewed content)
-        const trendingItems = [...transformedContent]
-          .sort((a, b) => (b.metadata?.views || 0) - (a.metadata?.views || 0))
-          .slice(0, 10);
-        setTrending(trendingItems);
-
-        await fetchAdExamples();
-
-      } catch (err) {
-        console.error('❌ Error in fallback mode:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load content');
-      }
-    };
-
-    const fetchAdExamples = async () => {
-      try {
         const adResponse = await fetch('/api/content?status=published&content_type=advertisement&limit=50');
         if (adResponse.ok) {
           const adResult = await adResponse.json();
@@ -208,8 +127,17 @@ export function VODLibrary() {
             setAdExamples(transformedAds);
           }
         }
+
+        if (allShelves.length === 0) {
+          setError('No content shelves configured. Please use the admin panel to create content shelves.');
+          return;
+        }
+
       } catch (err) {
-        console.warn('⚠️ Could not load ad examples:', err);
+        console.error('Error fetching shelves:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load content shelves');
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -234,9 +162,7 @@ export function VODLibrary() {
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-brand-purple mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Loading Content Library</h2>
-          <p className="text-muted-foreground">
-            {fallbackMode ? 'Loading content...' : 'Fetching your content shelves...'}
-          </p>
+          <p className="text-muted-foreground">Fetching your custom content shelves...</p>
         </div>
       </div>
     );
@@ -269,9 +195,7 @@ export function VODLibrary() {
   }
 
   // Check if we have any content
-  const hasShelfContent = heroShelf?.content?.length > 0 || shelves.some(shelf => shelf.content?.length > 0);
-  const hasFallbackContent = justAdded.length > 0 || trending.length > 0;
-  const hasAnyContent = hasShelfContent || hasFallbackContent;
+  const hasAnyContent = heroShelf?.content?.length > 0 || shelves.some(shelf => shelf.content?.length > 0);
 
   // Empty state
   if (!hasAnyContent) {
@@ -281,10 +205,7 @@ export function VODLibrary() {
           <Play className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">No Content Available</h2>
           <p className="text-muted-foreground mb-4">
-            {fallbackMode 
-              ? 'The content library is empty. Please upload and publish some content.'
-              : 'No content has been assigned to your shelves yet. Please use the admin panel to organize your content.'
-            }
+            No content has been assigned to your shelves yet. Please use the admin panel to organize your content.
           </p>
           <div className="space-x-3">
             <Button 
@@ -295,7 +216,7 @@ export function VODLibrary() {
             </Button>
             <Link href="/admin">
               <Button variant="outline">
-                {fallbackMode ? 'Upload Content' : 'Manage Content Shelves'}
+                Manage Content Shelves
               </Button>
             </Link>
           </div>
@@ -317,95 +238,46 @@ export function VODLibrary() {
         />
       )}
 
-      {/* Content Sections */}
+      {/* Dynamic Content Shelves */}
       <div className="container mx-auto px-4 py-8">
-        {fallbackMode ? (
-          // Fallback mode: show basic organization
-          <>
-            {/* Just Added - 16:9 Row */}
-            {justAdded.length > 0 && (
-              <VODRow
-                title="Just Added"
-                subtitle={`Latest content from our database (${justAdded.length} videos)`}
-                content={justAdded}
-                variant="large"
-                aspectRatio="16:9"
-                className="mb-12"
-              />
-            )}
+        {shelves.map((shelf) => {
+          const transformedContent = shelf.content.map(item => transformContentToVOD(item));
+          
+          if (transformedContent.length === 0) return null;
 
-            {/* Trending - 16:9 Format Row */}
-            {trending.length > 0 && (
-              <VODRow
-                title="Trending Now"
-                subtitle={`Most viewed content (${trending.length} videos)`}
-                content={trending}
-                variant="default"
-                aspectRatio="16:9"
-                className="mb-12"
-              />
-            )}
-
-            {/* Admin Notice */}
-            <div className="bg-blue-900/20 border border-blue-500/50 rounded-lg p-6 mb-12">
-              <div className="flex items-start space-x-3">
-                <Info className="w-5 h-5 text-blue-400 mt-0.5" />
-                <div>
-                  <h3 className="text-blue-400 font-semibold mb-2">Content Shelves Available</h3>
-                  <p className="text-gray-300 text-sm mb-3">
-                    You can create custom content shelves to organize your library exactly how you want. 
-                    Group videos by topic, difficulty, or any other criteria.
-                  </p>
-                  <Link href="/admin">
-                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                      Set Up Content Shelves
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </>
-        ) : (
-          // Content Shelves Mode: show database-driven shelves
-          shelves.map((shelf) => {
-            const transformedContent = shelf.content.map(item => transformContentToVOD(item));
-            
-            if (transformedContent.length === 0) return null;
-
-            // Render based on layout style
-            if (shelf.layout_style === 'grid') {
-              return (
-                <div key={shelf.id} className="mb-12">
-                  <div className="mb-6">
-                    <h2 className="text-2xl font-bold text-white mb-2">{shelf.name}</h2>
-                    {shelf.description && (
-                      <p className="text-gray-400">{shelf.description} ({transformedContent.length} videos)</p>
-                    )}
-                  </div>
-                  <VODGrid
-                    content={transformedContent}
-                    variant="default"
-                    aspectRatio={shelf.aspect_ratio}
-                    columns={{ mobile: 2, tablet: 3, desktop: 4 }}
-                  />
-                </div>
-              );
-            }
-
-            // Default to row layout
+          // Render based on layout style
+          if (shelf.layout_style === 'grid') {
             return (
-              <VODRow
-                key={shelf.id}
-                title={shelf.name}
-                subtitle={shelf.description ? `${shelf.description} (${transformedContent.length} videos)` : `${transformedContent.length} videos`}
-                content={transformedContent}
-                variant="default"
-                aspectRatio={shelf.aspect_ratio}
-                className="mb-12"
-              />
+              <div key={shelf.id} className="mb-12">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-white mb-2">{shelf.name}</h2>
+                  {shelf.description && (
+                    <p className="text-gray-400">{shelf.description} ({transformedContent.length} videos)</p>
+                  )}
+                </div>
+                <VODGrid
+                  content={transformedContent}
+                  variant="default"
+                  aspectRatio={shelf.aspect_ratio}
+                  columns={{ mobile: 2, tablet: 3, desktop: 4 }}
+                />
+              </div>
             );
-          })
-        )}
+          }
+
+          // Default to row layout
+          return (
+            <VODRow
+              key={shelf.id}
+              title={shelf.name}
+              subtitle={shelf.description ? `${shelf.description} (${transformedContent.length} videos)` : `${transformedContent.length} videos`}
+              content={transformedContent}
+              variant="default"
+              aspectRatio={shelf.aspect_ratio}
+              className="mb-12"
+            />
+          );
+        })}
 
         {/* Ad Examples Toggle Section */}
         {adExamples.length > 0 && (

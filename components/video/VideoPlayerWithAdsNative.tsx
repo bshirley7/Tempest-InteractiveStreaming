@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Stream, StreamPlayerApi } from '@cloudflare/stream-react';
 import { Button } from '@/components/ui/button';
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
@@ -36,8 +36,8 @@ export function VideoPlayerWithAdsNative({
   // Refs
   const streamPlayerRef = useRef<StreamPlayerApi | null>(null);
   
-  // Generate VAST URL for ads - only add if we want ads for this content
-  const [enableAds, setEnableAds] = useState(true);
+  // Generate VAST URL for ads - disable ads if the video itself is an advertisement
+  const [enableAds, setEnableAds] = useState(video.content_type !== 'advertisement');
   const [useTestVast, setUseTestVast] = useState(false); // For debugging
   
   const vastUrl = enableAds 
@@ -131,6 +131,11 @@ export function VideoPlayerWithAdsNative({
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+  
+  // Update enableAds when video content changes
+  useEffect(() => {
+    setEnableAds(video.content_type !== 'advertisement');
+  }, [video.content_type]);
 
   return (
     <div className={cn("relative w-full h-full bg-black", className)}>
@@ -157,6 +162,9 @@ export function VideoPlayerWithAdsNative({
             setEnableAds(false);
           }
         }}
+        onStreamAdStart={handleAdStart}
+        onStreamAdEnd={handleAdEnd}
+        onStreamAdTimeout={handleAdTimeout}
         style={{ width: '100%', height: '100%' }}
       />
 
@@ -181,14 +189,16 @@ export function VideoPlayerWithAdsNative({
 
       {/* Debug Controls - Top Right */}
       <div className="absolute top-4 right-4 z-30 flex flex-col gap-2">
-        <Button
-          onClick={() => setUseTestVast(!useTestVast)}
-          size="sm"
-          variant="outline"
-          className="text-white border-white bg-black/50 hover:bg-white hover:text-black text-xs"
-        >
-          {useTestVast ? 'Real Ads' : 'Test Ad'}
-        </Button>
+        {enableAds && (
+          <Button
+            onClick={() => setUseTestVast(!useTestVast)}
+            size="sm"
+            variant="outline"
+            className="text-white border-white bg-black/50 hover:bg-white hover:text-black text-xs"
+          >
+            {useTestVast ? 'Real Ads' : 'Test Ad'}
+          </Button>
+        )}
         <Button
           onClick={() => setEnableAds(!enableAds)}
           size="sm"
@@ -198,6 +208,7 @@ export function VideoPlayerWithAdsNative({
           {enableAds ? 'No Ads' : 'Ads On'}
         </Button>
       </div>
+      
 
       {/* Ad Info Indicator */}
       {isShowingAd && currentAd && (

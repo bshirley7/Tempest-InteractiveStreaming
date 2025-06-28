@@ -33,6 +33,9 @@ export function VideoPlayerWithAdsSimple({
   const [mainVideoStarted, setMainVideoStarted] = useState(false);
   const [skipAvailable, setSkipAvailable] = useState(false);
   const [adTimeLeft, setAdTimeLeft] = useState(0);
+  
+  // Disable ads if the video itself is an advertisement
+  const [enableAds, setEnableAds] = useState(video.content_type !== 'advertisement');
 
   // Fetch advertisement
   const fetchAd = async (position: string) => {
@@ -52,6 +55,16 @@ export function VideoPlayerWithAdsSimple({
 
   // Play advertisement
   const playAd = async (position: string) => {
+    // Skip ads if disabled or if this video is an advertisement
+    if (!enableAds) {
+      if (position === 'pre_roll') {
+        setMainVideoStarted(true);
+      } else if (position === 'end_roll') {
+        onEnded?.();
+      }
+      return;
+    }
+    
     const ad = await fetchAd(position);
     if (!ad) {
       // No ad available, continue with main content
@@ -100,6 +113,11 @@ export function VideoPlayerWithAdsSimple({
       setMainVideoStarted(true);
     }
   }, [autoPlay]);
+  
+  // Update enableAds when video content changes
+  useEffect(() => {
+    setEnableAds(video.content_type !== 'advertisement');
+  }, [video.content_type]);
 
   return (
     <div className={cn("relative w-full h-full bg-black", className)}>
@@ -158,13 +176,18 @@ export function VideoPlayerWithAdsSimple({
       {/* Initial Play Button */}
       {!mainVideoStarted && !isPlayingAd && (
         <div className="absolute inset-0 bg-black flex items-center justify-center">
-          <Button
-            onClick={() => playAd('pre_roll')}
-            size="lg"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4"
-          >
-            ▶ Play Video
-          </Button>
+          <div className="text-center">
+            <Button
+              onClick={() => playAd('pre_roll')}
+              size="lg"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4"
+            >
+              ▶ Play Video
+            </Button>
+            <p className="text-white text-sm opacity-75 mt-2">
+              {enableAds ? 'Ads may play before your video' : 'Video will play without ads'}
+            </p>
+          </div>
         </div>
       )}
     </div>

@@ -57,7 +57,6 @@ function transformContentToVOD(content: VideoContent & { content_channels?: any[
     channel: channelName,
     metadata: {
       tags: content.tags || inferTags(cleanTitle),
-      rating: 4.5, // Default rating since we don't have ratings in DB yet
       views: content.view_count || Math.floor(Math.random() * 10000) + 1000 // Random views for demo
     }
   };

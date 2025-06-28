@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Play, Clock, Info, Star, Eye } from "lucide-react"
+import { Play, Clock, Info, Eye } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -17,7 +17,6 @@ interface VODCardProps {
     channel: string
     metadata?: {
       tags?: string[]
-      rating?: number
       views?: number
     }
   }
@@ -122,12 +121,6 @@ export function VODCard({
               <Clock className="w-4 h-4" />
               {formatDuration(content.duration)}
             </span>
-            {content.metadata?.rating && (
-              <span className="flex items-center gap-1">
-                <Star className="w-4 h-4 fill-current text-yellow-400" />
-                {content.metadata.rating.toFixed(1)}
-              </span>
-            )}
             {content.metadata?.views && (
               <span className="flex items-center gap-1">
                 <Eye className="w-4 h-4" />
@@ -178,13 +171,6 @@ export function VODCard({
               {formatDuration(content.duration)}
             </div>
 
-            {/* Rating badge */}
-            {content.metadata?.rating && (
-              <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-md font-medium flex items-center gap-1">
-                <Star className="w-3 h-3 fill-current text-yellow-400" />
-                {content.metadata.rating.toFixed(1)}
-              </div>
-            )}
 
             {/* Channel badge */}
             <div className="absolute top-3 right-3 bg-primary/90 backdrop-blur-sm text-primary-foreground text-xs px-2 py-1 rounded-md font-medium">
@@ -262,13 +248,6 @@ export function VODCard({
             {formatDuration(content.duration)}
           </div>
 
-          {/* Rating badge */}
-          {content.metadata?.rating && (
-            <div className="absolute top-2 left-2 bg-black/80 backdrop-blur-sm text-white text-xs px-2 py-1 rounded font-medium flex items-center gap-1">
-              <Star className="w-3 h-3 fill-current text-yellow-400" />
-              {content.metadata.rating.toFixed(1)}
-            </div>
-          )}
         </div>
         
         {showMetadata && (

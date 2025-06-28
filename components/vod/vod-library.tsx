@@ -19,7 +19,6 @@ interface VODContent {
   channel: string;
   metadata?: {
     tags?: string[];
-    rating?: number;
     views?: number;
   };
 }
@@ -66,7 +65,6 @@ function transformContentToVOD(content: VideoContent & { content_channels?: any[
     channel: channelName,
     metadata: {
       tags: content.tags || [],
-      rating: 4.5,
       views: content.view_count || Math.floor(Math.random() * 10000) + 1000
     }
   };

@@ -23,6 +23,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils';
 import { useInteractions } from '@/lib/hooks/useInteractions';
 import { useChat } from '@/lib/hooks/useChat';
+import { EmojiPicker } from '@/components/ui/emoji-picker';
+import { CommandMenu } from '@/components/ui/command-menu';
+import { parseSlashCommand, isSlashCommand, canUseCommand } from '@/lib/utils/command-parser';
 import type { Interaction, ChatMessage } from '@/lib/types';
 
 interface UnifiedVideoInteractionsConnectedProps {
@@ -34,6 +37,7 @@ interface UnifiedVideoInteractionsConnectedProps {
   position?: 'right' | 'left';
   mode?: 'overlay' | 'sidebar';
   viewerCount?: number;
+  isLive?: boolean; // For context-aware features
   enabledFeatures?: {
     chat?: boolean;
     reactions?: boolean;
@@ -53,6 +57,7 @@ export function UnifiedVideoInteractionsConnected({
   position = 'right',
   mode = 'sidebar',
   viewerCount = 0,
+  isLive = false,
   enabledFeatures = {
     chat: true,
     reactions: true,
@@ -63,9 +68,8 @@ export function UnifiedVideoInteractionsConnected({
   }
 }: UnifiedVideoInteractionsConnectedProps) {
   const { user } = useUser();
-  const [activeTab, setActiveTab] = useState<'chat' | 'reactions' | 'polls' | 'quiz' | 'rating' | 'updates'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'polls' | 'quiz' | 'rating' | 'updates'>('chat');
   const [newMessage, setNewMessage] = useState('');
-  const [selectedReaction, setSelectedReaction] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Real-time hooks
@@ -91,16 +95,108 @@ export function UnifiedVideoInteractionsConnected({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Handle sending chat messages
+  // Handle sending chat messages or commands
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !user?.id) return;
 
+    const messageText = newMessage.trim();
+
+    // Check if it's a slash command
+    if (isSlashCommand(messageText)) {
+      await handleSlashCommand(messageText);
+      return;
+    }
+
     try {
-      await sendMessage(user.id, newMessage.trim());
+      await sendMessage(user.id, messageText);
       setNewMessage('');
     } catch (error) {
       console.error('Failed to send message:', error);
     }
+  };
+
+  // Handle slash commands
+  const handleSlashCommand = async (commandText: string) => {
+    const parsed = parseSlashCommand(commandText);
+    
+    if (!parsed) {
+      console.error('Invalid command format');
+      return;
+    }
+
+    if (!parsed.isValid) {
+      console.error('Command error:', parsed.error);
+      // TODO: Show error toast to user
+      return;
+    }
+
+    // Check permissions
+    if (!canUseCommand(`/${parsed.type}`, user?.publicMetadata?.role as string, isLive)) {
+      console.error('Permission denied for command');
+      // TODO: Show permission error to user
+      return;
+    }
+
+    try {
+      // Create interaction via API
+      const interactionData = {
+        type: parsed.type,
+        title: parsed.question,
+        description: parsed.question,
+        options: parsed.options,
+        correct_answer: parsed.correctAnswerIndex !== undefined ? parsed.options[parsed.correctAnswerIndex] : undefined,
+        channel_id: channelId,
+        content_id: contentId,
+        is_active: true
+      };
+
+      const response = await fetch('/api/interactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(interactionData)
+      });
+
+      if (response.ok) {
+        setNewMessage('');
+        console.log(`${parsed.type} created successfully`);
+        // TODO: Show success toast
+      } else {
+        console.error('Failed to create interaction');
+        // TODO: Show error toast
+      }
+    } catch (error) {
+      console.error('Error creating interaction:', error);
+    }
+  };
+
+  // Handle emoji selection for messages
+  const handleEmojiSelect = (emoji: string) => {
+    setNewMessage(prev => prev + emoji);
+  };
+
+  // Handle quick reactions
+  const handleQuickReaction = async (emoji: string) => {
+    if (!user?.id) return;
+
+    try {
+      // Send as a reaction message
+      await sendMessage(user.id, emoji, { message_type: 'reaction' });
+      
+      // Trigger floating emoji animation
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('emoji-reaction', {
+          detail: { emoji }
+        });
+        window.dispatchEvent(event);
+      }
+    } catch (error) {
+      console.error('Failed to send reaction:', error);
+    }
+  };
+
+  // Handle command selection from menu
+  const handleCommandSelect = (command: string) => {
+    setNewMessage(command);
   };
 
   // Handle poll voting
@@ -125,25 +221,6 @@ export function UnifiedVideoInteractionsConnected({
     }
   };
 
-  // Handle reaction
-  const handleReaction = async (emoji: string) => {
-    if (!user?.id) return;
-
-    try {
-      // Find or create a reaction interaction
-      let reactionInteraction = interactions.find(i => i.type === 'reaction' && i.is_active);
-      
-      if (reactionInteraction) {
-        await submitResponse(reactionInteraction.id, user.id, emoji);
-        setSelectedReaction(emoji);
-        
-        // Auto-clear reaction after animation
-        setTimeout(() => setSelectedReaction(null), 2000);
-      }
-    } catch (error) {
-      console.error('Failed to send reaction:', error);
-    }
-  };
 
   // Handle rating
   const handleRating = async (ratingId: string, rating: number) => {
@@ -156,23 +233,15 @@ export function UnifiedVideoInteractionsConnected({
     }
   };
 
-  // Tab configuration
+  // Tab configuration - context-aware labels
   const tabs = [
     {
       id: 'chat' as const,
-      label: 'Chat',
+      label: isLive ? 'Chat' : 'Comments',
       icon: MessageCircle,
       enabled: enabledFeatures.chat,
       badge: messages.length > 0 ? messages.length : undefined,
       color: 'text-blue-400'
-    },
-    {
-      id: 'reactions' as const,
-      label: 'Reactions',
-      icon: Heart,
-      enabled: enabledFeatures.reactions,
-      badge: selectedReaction ? '!' : undefined,
-      color: 'text-red-400'
     },
     {
       id: 'polls' as const,
@@ -186,7 +255,7 @@ export function UnifiedVideoInteractionsConnected({
       id: 'quiz' as const,
       label: 'Quiz',
       icon: HelpCircle,
-      enabled: enabledFeatures.quiz,
+      enabled: enabledFeatures.quiz && (canUseCommand('/quiz', user?.publicMetadata?.role as string, isLive)),
       badge: activeQuizzes.length > 0 ? activeQuizzes.length : undefined,
       color: 'text-purple-400'
     },
@@ -194,7 +263,7 @@ export function UnifiedVideoInteractionsConnected({
       id: 'rating' as const,
       label: 'Rating',
       icon: Star,
-      enabled: enabledFeatures.rating,
+      enabled: enabledFeatures.rating && !isLive, // Only available for VOD
       badge: activeRatings.length > 0 ? activeRatings.length : undefined,
       color: 'text-yellow-400'
     },
@@ -208,14 +277,13 @@ export function UnifiedVideoInteractionsConnected({
     }
   ].filter(tab => tab.enabled);
 
-  if (!isOpen) return null;
-
   return (
     <TooltipProvider>
       <div className={cn(
-        "fixed inset-y-0 z-50 flex flex-col bg-black/95 backdrop-blur-md border-l border-white/10",
+        "fixed inset-y-0 z-50 flex flex-col bg-black/95 backdrop-blur-md border-l border-white/10 transition-transform duration-300 ease-out",
         position === 'right' ? 'right-0' : 'left-0',
-        mode === 'sidebar' ? 'w-80' : 'w-72'
+        mode === 'sidebar' ? 'w-80' : 'w-72',
+        isOpen ? 'translate-x-0' : position === 'right' ? 'translate-x-full' : '-translate-x-full'
       )}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/10">
@@ -274,7 +342,7 @@ export function UnifiedVideoInteractionsConnected({
         <div className="flex-1 overflow-hidden">
           {/* Chat Tab */}
           {activeTab === 'chat' && (
-            <div className="h-full flex flex-col">
+            <div className="h-full flex flex-col animate-in fade-in duration-200">
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {chatLoading ? (
                   <div className="flex items-center justify-center h-32">
@@ -283,47 +351,78 @@ export function UnifiedVideoInteractionsConnected({
                 ) : messages.length === 0 ? (
                   <div className="text-center text-gray-500 py-8">
                     <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p>No messages yet</p>
-                    <p className="text-xs">Be the first to say hello!</p>
+                    <p>No {isLive ? 'messages' : 'comments'} yet</p>
+                    <p className="text-xs">
+                      Be the first to {isLive ? 'say hello' : 'comment'}!
+                    </p>
                   </div>
                 ) : (
-                  messages.map((message) => (
-                    <div key={message.id} className="text-sm">
-                      <div className="flex items-start gap-2">
-                        <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xs font-bold text-white">
-                          {message.user_id?.charAt(0).toUpperCase() || 'U'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1">
-                            <span className="font-medium text-white text-xs truncate">
-                              User {message.user_id?.slice(-4) || 'Unknown'}
+                  messages.map((message) => {
+                    // Check if message is a single emoji reaction
+                    const isEmojiReaction = message.message_type === 'reaction' || 
+                      (message.message.length <= 2 && /^\p{Emoji}+$/u.test(message.message));
+                    
+                    return (
+                      <div key={message.id} className="text-sm">
+                        {isEmojiReaction ? (
+                          // Emoji reaction display
+                          <div className="flex items-center gap-2 py-1">
+                            <span className="text-2xl animate-in zoom-in duration-300">
+                              {message.message}
                             </span>
-                            <span className="text-gray-500 text-xs">
-                              {new Date(message.created_at).toLocaleTimeString([], { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              })}
+                            <span className="text-xs text-gray-500">
+                              {message.user_id?.slice(-4) || 'User'}
                             </span>
                           </div>
-                          <p className="text-gray-300 text-sm break-words">{message.message}</p>
-                        </div>
+                        ) : (
+                          // Regular message display
+                          <div className="flex items-start gap-2">
+                            <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xs font-bold text-white">
+                              {message.user_id?.charAt(0).toUpperCase() || 'U'}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1">
+                                <span className="font-medium text-white text-xs truncate">
+                                  User {message.user_id?.slice(-4) || 'Unknown'}
+                                </span>
+                                <span className="text-gray-500 text-xs">
+                                  {new Date(message.created_at).toLocaleTimeString([], { 
+                                    hour: '2-digit', 
+                                    minute: '2-digit' 
+                                  })}
+                                </span>
+                              </div>
+                              <p className="text-gray-300 text-sm break-words">{message.message}</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
                 <div ref={messagesEndRef} />
               </div>
               
               <div className="p-4 border-t border-white/10">
-                <div className="flex gap-2">
+                <div className="flex gap-1">
+                  <EmojiPicker 
+                    onEmojiSelect={handleEmojiSelect}
+                    onQuickReaction={handleQuickReaction}
+                    size="md"
+                  />
                   <Input
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Type a message..."
+                    placeholder={isLive ? "Type a message..." : "Add a comment..."}
                     className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-gray-500"
                     onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                     disabled={!user}
                     maxLength={500}
+                  />
+                  <CommandMenu
+                    onCommandSelect={handleCommandSelect}
+                    isLive={isLive}
+                    size="md"
                   />
                   <Button
                     onClick={handleSendMessage}
@@ -335,41 +434,18 @@ export function UnifiedVideoInteractionsConnected({
                   </Button>
                 </div>
                 {!user && (
-                  <p className="text-xs text-gray-500 mt-2">Sign in to chat</p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Sign in to {isLive ? 'chat' : 'comment'}
+                  </p>
                 )}
               </div>
             </div>
           )}
 
-          {/* Reactions Tab */}
-          {activeTab === 'reactions' && (
-            <div className="p-4">
-              <h3 className="font-semibold text-white mb-4">Quick Reactions</h3>
-              <div className="grid grid-cols-4 gap-3">
-                {['❤️', '👍', '👏', '😂', '😮', '🔥', '⭐', '💯'].map((emoji) => (
-                  <Button
-                    key={emoji}
-                    variant="outline"
-                    className={cn(
-                      "aspect-square text-xl border-white/10 hover:border-white/30",
-                      selectedReaction === emoji && "bg-white/20 border-white/50"
-                    )}
-                    onClick={() => handleReaction(emoji)}
-                    disabled={!user}
-                  >
-                    {emoji}
-                  </Button>
-                ))}
-              </div>
-              {!user && (
-                <p className="text-xs text-gray-500 mt-4">Sign in to react</p>
-              )}
-            </div>
-          )}
 
           {/* Polls Tab */}
           {activeTab === 'polls' && (
-            <div className="p-4">
+            <div className="p-4 animate-in fade-in duration-200">
               <h3 className="font-semibold text-white mb-4">Active Polls</h3>
               {interactionsLoading ? (
                 <div className="flex items-center justify-center h-32">
@@ -422,7 +498,7 @@ export function UnifiedVideoInteractionsConnected({
 
           {/* Quiz Tab */}
           {activeTab === 'quiz' && (
-            <div className="p-4">
+            <div className="p-4 animate-in fade-in duration-200">
               <h3 className="font-semibold text-white mb-4">Active Quizzes</h3>
               {interactionsLoading ? (
                 <div className="flex items-center justify-center h-32">
@@ -469,7 +545,7 @@ export function UnifiedVideoInteractionsConnected({
 
           {/* Rating Tab */}
           {activeTab === 'rating' && (
-            <div className="p-4">
+            <div className="p-4 animate-in fade-in duration-200">
               <h3 className="font-semibold text-white mb-4">Rate Content</h3>
               {activeRatings.length === 0 ? (
                 <div className="text-center text-gray-500 py-8">
@@ -507,7 +583,7 @@ export function UnifiedVideoInteractionsConnected({
 
           {/* Updates Tab */}
           {activeTab === 'updates' && (
-            <div className="p-4">
+            <div className="p-4 animate-in fade-in duration-200">
               <h3 className="font-semibold text-white mb-4">Live Updates</h3>
               <div className="text-center text-gray-500 py-8">
                 <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { UnifiedVideoInteractionsConnected } from './UnifiedVideoInteractionsConnected';
 import { getVideoInteractionConfig, VideoContentWithInteractions } from '@/lib/video-interactions';
+import { FloatingEmojiManager } from '@/components/ui/floating-emoji';
 import { cn } from '@/lib/utils';
 
 // Custom XCast Icon Component
@@ -47,6 +48,7 @@ export function VideoPlayerWithInteractions({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mouseTimer, setMouseTimer] = useState<NodeJS.Timeout | null>(null);
   const [controlsVisible, setControlsVisible] = useState(showControls);
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   // Intelligent interaction detection
   const interactionConfig = React.useMemo(() => {
@@ -117,17 +119,21 @@ export function VideoPlayerWithInteractions({
 
   return (
     <div 
+      ref={containerRef}
       className={cn("relative w-full h-full", className)}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
       {/* Video Player Content */}
       {children}
+      
+      {/* Floating Emoji Manager */}
+      <FloatingEmojiManager containerRef={containerRef} />
 
       {/* Interaction Sidebar Notch Button */}
       <div 
         className={cn(
-          "absolute right-0 top-1/2 -translate-y-1/2 transition-all duration-300",
+          "absolute right-0 top-1/2 -translate-y-1/2 transition-all duration-300 ease-out",
           sidebarOpen ? "translate-x-72" : "translate-x-0"
         )}
       >
@@ -157,6 +163,7 @@ export function VideoPlayerWithInteractions({
         position="right"
         mode="sidebar"
         viewerCount={viewerCount}
+        isLive={isLive}
         enabledFeatures={interactionConfig.features}
       />
     </div>

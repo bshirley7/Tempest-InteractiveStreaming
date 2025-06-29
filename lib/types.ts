@@ -284,14 +284,24 @@ export interface Rating {
 }
 
 // Chat Types
+export type MessageType = 'text' | 'reaction' | 'system';
+
+export interface ReactionGroup {
+  emoji: string;
+  users: string[];
+  count: number;
+}
+
 export interface ChatMessage {
   id: string;
   channel_id?: string;
   content_id?: string;
   user_id: string;
   message: string;
+  message_type: MessageType;
   is_pinned: boolean;
   is_deleted: boolean;
+  reactions?: ReactionGroup[];
   metadata: Record<string, any>;
   created_at: string;
   updated_at: string;

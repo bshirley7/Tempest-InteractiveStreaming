@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { 
-      user_id, 
+      user_id: clerk_user_id, 
       message, 
       channel_id, 
       content_id, 
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validation
-    if (!user_id || !message?.trim()) {
+    if (!clerk_user_id || !message?.trim()) {
       return NextResponse.json({ success: false, error: 'User ID and message are required' }, { status: 400 });
     }
 
@@ -85,11 +85,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Message too long (max 500 characters)' }, { status: 400 });
     }
 
+    // Look up the user's internal UUID from their Clerk ID
+    const { data: userProfile, error: userError } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('clerk_user_id', clerk_user_id)
+      .single();
+
+    if (userError || !userProfile) {
+      console.error('User profile not found for Clerk ID:', clerk_user_id);
+      return NextResponse.json({ success: false, error: 'User profile not found' }, { status: 404 });
+    }
+
+    // Extract message_type from metadata if present
+    const messageType = metadata.message_type || 'text';
+    
     const { data, error } = await supabase
       .from('chat_messages')
       .insert({
-        user_id,
+        user_id: userProfile.id, // Use the UUID from user_profiles
         message: cleanMessage,
+        message_type: messageType,
         channel_id,
         content_id,
         metadata,

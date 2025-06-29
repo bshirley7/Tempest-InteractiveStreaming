@@ -45,10 +45,22 @@ export async function POST(
 
     const { id: interactionId } = params;
     const body = await request.json();
-    const { user_id, response, response_data = {} } = body;
+    const { user_id: clerk_user_id, response, response_data = {} } = body;
 
-    if (!user_id || !response) {
+    if (!clerk_user_id || !response) {
       return NextResponse.json({ success: false, error: 'User ID and response are required' }, { status: 400 });
+    }
+
+    // Look up the user's internal UUID from their Clerk ID
+    const { data: userProfile, error: userError } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('clerk_user_id', clerk_user_id)
+      .single();
+
+    if (userError || !userProfile) {
+      console.error('User profile not found for Clerk ID:', clerk_user_id);
+      return NextResponse.json({ success: false, error: 'User profile not found' }, { status: 404 });
     }
 
     // Check if user has already responded to this interaction
@@ -56,7 +68,7 @@ export async function POST(
       .from('interaction_responses')
       .select('id')
       .eq('interaction_id', interactionId)
-      .eq('user_id', user_id)
+      .eq('user_id', userProfile.id)
       .single();
 
     if (existing) {
@@ -80,7 +92,7 @@ export async function POST(
       .from('interaction_responses')
       .insert({
         interaction_id: interactionId,
-        user_id,
+        user_id: userProfile.id, // Use the UUID from user_profiles
         response,
         response_data,
         is_correct: isCorrect

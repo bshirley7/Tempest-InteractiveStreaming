@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import { filterContent, checkUserModerationStatus } from '@/lib/moderation/content-filter';
 
 export async function GET(request: NextRequest) {
   try {
@@ -97,6 +98,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'User profile not found' }, { status: 404 });
     }
 
+    // Check user moderation status
+    const moderationStatus = await checkUserModerationStatus(userProfile.id);
+    if (!moderationStatus.canPost) {
+      return NextResponse.json({ 
+        success: false, 
+        error: moderationStatus.isBanned ? 'Account banned' : 'Posting restricted' 
+      }, { status: 403 });
+    }
+
+    // Filter content through moderation system
+    const context = channel_id ? 'chat' : 'comments';
+    const moderationResult = await filterContent(cleanMessage, context, userProfile.id);
+    
+    if (!moderationResult.isAllowed) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Message blocked by content filter' 
+      }, { status: 400 });
+    }
+
     // Extract message_type from metadata if present
     const messageType = metadata.message_type || 'text';
     
@@ -104,13 +125,19 @@ export async function POST(request: NextRequest) {
       .from('chat_messages')
       .insert({
         user_id: userProfile.id, // Use the UUID from user_profiles
-        message: cleanMessage,
+        message: moderationResult.filteredContent, // Use filtered content
         message_type: messageType,
         channel_id,
         content_id,
-        metadata,
+        metadata: {
+          ...metadata,
+          moderation_score: moderationResult.severityScore,
+          requires_review: moderationResult.requiresManualReview
+        },
         is_pinned: false,
-        is_deleted: false
+        is_deleted: false,
+        is_flagged: moderationResult.actionTaken === 'flagged',
+        moderation_status: moderationResult.actionTaken === 'flagged' ? 'flagged' : 'approved'
       })
       .select()
       .single();

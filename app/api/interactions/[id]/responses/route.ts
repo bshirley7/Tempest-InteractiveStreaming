@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import { auth } from '@clerk/nextjs/server';
 
 export async function GET(
   request: NextRequest,
@@ -37,6 +38,15 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Get authenticated user ID from Clerk
+    const { userId: clerkUserId } = auth();
+    if (!clerkUserId) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const supabase = createServiceClient();
     
     if (!supabase) {
@@ -45,21 +55,21 @@ export async function POST(
 
     const { id: interactionId } = params;
     const body = await request.json();
-    const { user_id: clerk_user_id, response, response_data = {} } = body;
+    const { response_data = {} } = body;
 
-    if (!clerk_user_id || !response) {
-      return NextResponse.json({ success: false, error: 'User ID and response are required' }, { status: 400 });
+    if (!response_data || !response_data.selected_option) {
+      return NextResponse.json({ success: false, error: 'Response data with selected_option is required' }, { status: 400 });
     }
 
     // Look up the user's internal UUID from their Clerk ID
     const { data: userProfile, error: userError } = await supabase
       .from('user_profiles')
       .select('id')
-      .eq('clerk_user_id', clerk_user_id)
+      .eq('clerk_user_id', clerkUserId)
       .single();
 
     if (userError || !userProfile) {
-      console.error('User profile not found for Clerk ID:', clerk_user_id);
+      console.error('User profile not found for Clerk ID:', clerkUserId);
       return NextResponse.json({ success: false, error: 'User profile not found' }, { status: 404 });
     }
 
@@ -82,9 +92,10 @@ export async function POST(
       .eq('id', interactionId)
       .single();
 
+    const selectedOption = response_data.selected_option;
     let isCorrect = null;
     if (interaction?.correct_answer && ['quiz'].includes(interaction.type)) {
-      isCorrect = response === interaction.correct_answer;
+      isCorrect = selectedOption === interaction.correct_answer;
     }
 
     // Insert the response
@@ -93,15 +104,18 @@ export async function POST(
       .insert({
         interaction_id: interactionId,
         user_id: userProfile.id, // Use the UUID from user_profiles
-        response,
-        response_data,
-        is_correct: isCorrect
+        response: selectedOption
       })
       .select()
       .single();
 
     if (error) {
       console.error('Error creating interaction response:', error);
+      console.error('Insert payload was:', {
+        interaction_id: interactionId,
+        user_id: userProfile.id,
+        response: selectedOption
+      });
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 

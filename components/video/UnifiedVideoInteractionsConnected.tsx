@@ -38,6 +38,7 @@ interface UnifiedVideoInteractionsConnectedProps {
   mode?: 'overlay' | 'sidebar';
   viewerCount?: number;
   isLive?: boolean; // For context-aware features
+  currentVideoTime?: number; // Current time in seconds for time-based interactions
   enabledFeatures?: {
     chat?: boolean;
     reactions?: boolean;
@@ -58,6 +59,7 @@ export function UnifiedVideoInteractionsConnected({
   mode = 'sidebar',
   viewerCount = 0,
   isLive = false,
+  currentVideoTime = 0,
   enabledFeatures = {
     chat: true,
     reactions: true,
@@ -70,7 +72,24 @@ export function UnifiedVideoInteractionsConnected({
   const { user } = useUser();
   const [activeTab, setActiveTab] = useState<'chat' | 'polls' | 'quiz' | 'rating' | 'updates'>('chat');
   const [newMessage, setNewMessage] = useState('');
+  const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, { answer: string; isCorrect: boolean; timestamp: number }>>({}); // Track user answers
+  const [showFeedback, setShowFeedback] = useState<Record<string, boolean>>({}); // Track feedback display
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Helper function to parse time from MM:SS format to seconds
+  const parseTimeToSeconds = (timeStr: string | number): number => {
+    if (typeof timeStr === 'number') return timeStr;
+    if (typeof timeStr !== 'string') return 0;
+    
+    const parts = timeStr.split(':');
+    if (parts.length === 2) {
+      const minutes = parseInt(parts[0], 10) || 0;
+      const seconds = parseInt(parts[1], 10) || 0;
+      return minutes * 60 + seconds;
+    }
+    return 0;
+  };
 
   // Real-time hooks
   const { interactions, loading: interactionsLoading, submitResponse } = useInteractions({
@@ -85,15 +104,40 @@ export function UnifiedVideoInteractionsConnected({
     limit: 100
   });
 
-  // Filter interactions by type
+  // Filter interactions by type and time-based triggering
   const activePolls = interactions.filter(i => i.type === 'poll' && i.is_active);
-  const activeQuizzes = interactions.filter(i => i.type === 'quiz' && i.is_active);
   const activeRatings = interactions.filter(i => i.type === 'rating' && i.is_active);
+  
+  // Time-based quiz filtering
+  const activeQuizzes = interactions.filter(i => {
+    if (i.type !== 'quiz' || !i.is_active) return false;
+    
+    // If no current video time, show all active quizzes (fallback)
+    if (currentVideoTime === 0) return true;
+    
+    // Check if quiz should be triggered based on time
+    const triggerTime = parseTimeToSeconds(i.metadata?.trigger_time || 0);
+    const duration = parseTimeToSeconds(i.metadata?.duration || "0:30"); // Default 30 seconds
+    
+    return currentVideoTime >= triggerTime && currentVideoTime <= (triggerTime + duration);
+  });
+  
+  // Get current quiz question (only show one at a time)
+  const currentQuiz = activeQuizzes[currentQuizIndex] || null;
 
   // Auto-scroll chat to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Handle quiz progression - reset index when quizzes change
+  useEffect(() => {
+    if (activeQuizzes.length > 0 && currentQuizIndex >= activeQuizzes.length) {
+      setCurrentQuizIndex(0);
+    }
+  }, [activeQuizzes.length, currentQuizIndex]);
+
+  // Note: Removed auto-switch to quiz tab to allow manual navigation
 
   // Handle sending chat messages or commands
   const handleSendMessage = async () => {
@@ -204,7 +248,7 @@ export function UnifiedVideoInteractionsConnected({
     if (!user?.id) return;
 
     try {
-      await submitResponse(pollId, user.id, optionId);
+      await submitResponse(pollId, optionId);
     } catch (error) {
       console.error('Failed to submit poll vote:', error);
     }
@@ -214,8 +258,35 @@ export function UnifiedVideoInteractionsConnected({
   const handleQuizAnswer = async (quizId: string, answer: string) => {
     if (!user?.id) return;
 
+    // Find the quiz to check correct answer
+    const quiz = interactions.find(i => i.id === quizId);
+    if (!quiz) return;
+
+    const isCorrect = answer === quiz.correct_answer;
+    
+    // Store the answer and feedback
+    setQuizAnswers(prev => ({
+      ...prev,
+      [quizId]: {
+        answer,
+        isCorrect,
+        timestamp: Date.now()
+      }
+    }));
+
+    // Show feedback immediately
+    setShowFeedback(prev => ({ ...prev, [quizId]: true }));
+
     try {
-      await submitResponse(quizId, user.id, answer);
+      await submitResponse(quizId, answer);
+      
+      // Advance to next quiz question after showing feedback
+      setTimeout(() => {
+        setShowFeedback(prev => ({ ...prev, [quizId]: false }));
+        if (currentQuizIndex < activeQuizzes.length - 1) {
+          setCurrentQuizIndex(currentQuizIndex + 1);
+        }
+      }, 3000); // Show feedback for 3 seconds before moving to next question
     } catch (error) {
       console.error('Failed to submit quiz answer:', error);
     }
@@ -227,7 +298,7 @@ export function UnifiedVideoInteractionsConnected({
     if (!user?.id) return;
 
     try {
-      await submitResponse(ratingId, user.id, rating.toString());
+      await submitResponse(ratingId, rating.toString());
     } catch (error) {
       console.error('Failed to submit rating:', error);
     }
@@ -256,7 +327,7 @@ export function UnifiedVideoInteractionsConnected({
       label: 'Quiz',
       icon: HelpCircle,
       enabled: enabledFeatures.quiz && (canUseCommand('/quiz', user?.publicMetadata?.role as string, isLive)),
-      badge: activeQuizzes.length > 0 ? activeQuizzes.length : undefined,
+      badge: currentQuiz ? 'NEW' : (activeQuizzes.length > 1 ? activeQuizzes.length : undefined),
       color: 'text-purple-400'
     },
     {
@@ -324,7 +395,15 @@ export function UnifiedVideoInteractionsConnected({
                     <Icon className={cn("w-3 h-3", activeTab === tab.id ? "text-white" : tab.color)} />
                     <span className="hidden sm:inline">{tab.label}</span>
                     {tab.badge && (
-                      <Badge variant="secondary" className="text-xs px-1 py-0 h-4 min-w-4">
+                      <Badge 
+                        variant="secondary" 
+                        className={cn(
+                          "text-xs px-1 py-0 h-4 min-w-4",
+                          tab.id === 'quiz' && currentQuiz && activeTab !== 'quiz' 
+                            ? "bg-purple-500 text-white animate-pulse" 
+                            : ""
+                        )}
+                      >
                         {tab.badge}
                       </Badge>
                     )}
@@ -463,7 +542,7 @@ export function UnifiedVideoInteractionsConnected({
                       <h4 className="font-medium text-white mb-3">{poll.title}</h4>
                       <div className="space-y-2">
                         {poll.options.map((option, index) => {
-                          const votes = poll.results?.response_counts?.[option] || 0;
+                          const votes = poll.results?.response_counts?.[option.id || option] || 0;
                           const totalVotes = poll.results?.total_responses || 0;
                           const percentage = totalVotes > 0 ? (votes / totalVotes) * 100 : 0;
                           
@@ -472,10 +551,10 @@ export function UnifiedVideoInteractionsConnected({
                               key={index}
                               variant="outline"
                               className="w-full justify-between border-white/10 hover:border-white/30"
-                              onClick={() => handlePollVote(poll.id, option)}
+                              onClick={() => handlePollVote(poll.id, option.id || option)}
                               disabled={!user}
                             >
-                              <span>{option}</span>
+                              <span>{option.text || option}</span>
                               <span className="text-xs text-gray-400">
                                 {votes} ({percentage.toFixed(0)}%)
                               </span>
@@ -499,42 +578,140 @@ export function UnifiedVideoInteractionsConnected({
           {/* Quiz Tab */}
           {activeTab === 'quiz' && (
             <div className="p-4 animate-in fade-in duration-200">
-              <h3 className="font-semibold text-white mb-4">Active Quizzes</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-white">Quiz Question</h3>
+                {activeQuizzes.length > 1 && (
+                  <div className="text-xs text-gray-400">
+                    {currentQuizIndex + 1} of {activeQuizzes.length}
+                  </div>
+                )}
+              </div>
+              
               {interactionsLoading ? (
                 <div className="flex items-center justify-center h-32">
                   <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
                 </div>
-              ) : activeQuizzes.length === 0 ? (
+              ) : !currentQuiz ? (
                 <div className="text-center text-gray-500 py-8">
                   <HelpCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p>No active quizzes</p>
+                  <p>No quiz questions at this time</p>
+                  {currentVideoTime > 0 && (
+                    <p className="text-xs mt-2">Quiz questions will appear at specific times in the video</p>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {activeQuizzes.map((quiz) => (
-                    <div key={quiz.id} className="bg-white/5 rounded-lg p-4">
-                      <h4 className="font-medium text-white mb-3">{quiz.title}</h4>
-                      <div className="space-y-2">
-                        {quiz.options.map((option, index) => (
+                  <div className="bg-white/5 rounded-lg p-4 border-l-4 border-blue-500">
+                    <h4 className="font-medium text-white mb-3">{currentQuiz.title}</h4>
+                    <p className="text-gray-300 text-sm mb-4">{currentQuiz.question}</p>
+                    
+                    <div className="space-y-2">
+                      {currentQuiz.options.map((option, index) => {
+                        const userAnswer = quizAnswers[currentQuiz.id];
+                        const isSelected = userAnswer?.answer === (option.id || option);
+                        const isCorrect = (option.id || option) === currentQuiz.correct_answer;
+                        const showingFeedback = showFeedback[currentQuiz.id];
+                        
+                        let buttonClass = "w-full justify-start border-white/10 hover:border-white/30 transition-colors";
+                        let letterBgClass = "w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-xs mr-3";
+                        
+                        if (showingFeedback) {
+                          if (isSelected) {
+                            if (userAnswer?.isCorrect) {
+                              buttonClass += " border-green-500 bg-green-500/20 text-green-200";
+                              letterBgClass = "w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-xs mr-3 text-white";
+                            } else {
+                              buttonClass += " border-red-500 bg-red-500/20 text-red-200";
+                              letterBgClass = "w-6 h-6 rounded-full bg-red-500 flex items-center justify-center text-xs mr-3 text-white";
+                            }
+                          } else if (isCorrect && !userAnswer?.isCorrect) {
+                            buttonClass += " border-green-400 bg-green-400/10 text-green-300";
+                            letterBgClass = "w-6 h-6 rounded-full bg-green-400 flex items-center justify-center text-xs mr-3 text-white";
+                          }
+                        } else {
+                          buttonClass += " hover:bg-blue-600/20";
+                        }
+                        
+                        return (
                           <Button
                             key={index}
                             variant="outline"
-                            className="w-full justify-start border-white/10 hover:border-white/30"
-                            onClick={() => handleQuizAnswer(quiz.id, option)}
-                            disabled={!user}
+                            className={buttonClass}
+                            onClick={() => handleQuizAnswer(currentQuiz.id, option.id || option)}
+                            disabled={!user || showingFeedback}
                           >
-                            {option}
+                            <span className={letterBgClass}>
+                              {showingFeedback && isSelected && userAnswer?.isCorrect ? '✓' : 
+                               showingFeedback && isSelected && !userAnswer?.isCorrect ? '✗' :
+                               showingFeedback && isCorrect && !userAnswer?.isCorrect ? '✓' :
+                               String.fromCharCode(65 + index)}
+                            </span>
+                            {option.text || option}
                           </Button>
-                        ))}
+                        );
+                      })}
+                    </div>
+                    
+                    {/* Answer explanation */}
+                    {showFeedback[currentQuiz.id] && currentQuiz.metadata?.explanation && (
+                      <div className={cn(
+                        "mt-4 p-3 rounded-lg border-l-4 animate-in slide-in-from-left duration-300",
+                        quizAnswers[currentQuiz.id]?.isCorrect 
+                          ? "bg-green-500/10 border-green-500 text-green-200" 
+                          : "bg-blue-500/10 border-blue-500 text-blue-200"
+                      )}>
+                        <div className="flex items-start gap-2">
+                          <div className={cn(
+                            "w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold mt-0.5",
+                            quizAnswers[currentQuiz.id]?.isCorrect 
+                              ? "bg-green-500 text-white" 
+                              : "bg-blue-500 text-white"
+                          )}>
+                            {quizAnswers[currentQuiz.id]?.isCorrect ? '✓' : 'i'}
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">
+                              {quizAnswers[currentQuiz.id]?.isCorrect ? 'Correct!' : 'Explanation:'}
+                            </p>
+                            <p className="text-xs mt-1 opacity-90">
+                              {currentQuiz.metadata.explanation}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="mt-3 text-xs text-gray-400">
-                        <p>Responses: {quiz.results?.total_responses || 0}</p>
-                        {quiz.results?.accuracy_rate && (
-                          <p>Accuracy: {quiz.results.accuracy_rate.toFixed(1)}%</p>
+                    )}
+                    
+                    <div className="mt-4 flex items-center justify-between text-xs text-gray-400">
+                      <div>
+                        <p>Responses: {currentQuiz.results?.total_responses || 0}</p>
+                        {currentQuiz.results?.accuracy_rate && (
+                          <p>Accuracy: {currentQuiz.results.accuracy_rate.toFixed(1)}%</p>
                         )}
                       </div>
+                      
+                      {currentQuiz.metadata?.trigger_time && (
+                        <div className="text-right">
+                          <p>Time: {typeof currentQuiz.metadata.trigger_time === 'string' ? currentQuiz.metadata.trigger_time : (() => {
+                            const time = parseTimeToSeconds(currentQuiz.metadata.trigger_time);
+                            const minutes = Math.floor(time / 60);
+                            const seconds = time % 60;
+                            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                          })()}</p>
+                        </div>
+                      )}
                     </div>
-                  ))}
+                    
+                    {activeQuizzes.length > 1 && currentQuizIndex < activeQuizzes.length - 1 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="mt-3 text-gray-400 hover:text-white"
+                        onClick={() => setCurrentQuizIndex(currentQuizIndex + 1)}
+                      >
+                        Skip to next question <ChevronRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
               {!user && (

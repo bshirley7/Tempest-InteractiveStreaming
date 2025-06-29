@@ -126,15 +126,16 @@ export function useInteractions(options: UseInteractionsOptions = {}) {
   }, [fetchInteractions]);
 
   // Submit response to interaction
-  const submitResponse = useCallback(async (interactionId: string, userId: string, response: string, responseData = {}) => {
+  const submitResponse = useCallback(async (interactionId: string, response: string, responseData = {}) => {
     try {
       const apiResponse = await fetch(`/api/interactions/${interactionId}/responses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: userId,
-          response,
-          response_data: responseData
+          response_data: {
+            selected_option: response,
+            ...responseData
+          }
         })
       });
 

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { UnifiedVideoInteractionsConnected } from './UnifiedVideoInteractionsConnected';
 import { getVideoInteractionConfig, VideoContentWithInteractions } from '@/lib/video-interactions';
 import { FloatingEmojiManager } from '@/components/ui/floating-emoji';
+import { PauseScreenAd } from '@/components/ads/PauseScreenAd';
 import { cn } from '@/lib/utils';
 
 // Custom XCast Icon Component
@@ -21,6 +22,9 @@ interface VideoPlayerWithInteractionsProps {
   viewerCount?: number;
   showControls?: boolean;
   viewerRole?: 'viewer' | 'student' | 'instructor' | 'admin';
+  currentVideoTime?: number; // Current time in seconds for time-based interactions
+  isPaused?: boolean; // Video pause state for pause screen ads
+  enablePauseAds?: boolean; // Enable/disable pause screen ads (default: false for testing)
   enabledFeatures?: {
     chat?: boolean;
     reactions?: boolean;
@@ -41,6 +45,9 @@ export function VideoPlayerWithInteractions({
   viewerCount = 0,
   showControls = false,
   viewerRole = 'viewer',
+  currentVideoTime = 0,
+  isPaused = false,
+  enablePauseAds = false,
   enabledFeatures,
   isLive = false,
   className = ''
@@ -48,7 +55,33 @@ export function VideoPlayerWithInteractions({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mouseTimer, setMouseTimer] = useState<NodeJS.Timeout | null>(null);
   const [controlsVisible, setControlsVisible] = useState(showControls);
+  const [showPauseAd, setShowPauseAd] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // Handle pause screen ad analytics
+  const handleAdImpression = async (adId: string) => {
+    try {
+      await fetch('/api/ads/pause-screen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adId, action: 'impression' })
+      });
+    } catch (error) {
+      console.error('Failed to track ad impression:', error);
+    }
+  };
+
+  const handleAdClick = async (adId: string) => {
+    try {
+      await fetch('/api/ads/pause-screen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adId, action: 'click' })
+      });
+    } catch (error) {
+      console.error('Failed to track ad click:', error);
+    }
+  };
 
   // Intelligent interaction detection
   const interactionConfig = React.useMemo(() => {
@@ -84,6 +117,20 @@ export function VideoPlayerWithInteractions({
       }
     };
   }, [content, viewerRole, enabledFeatures, isLive]);
+
+  // Handle pause screen ad visibility
+  React.useEffect(() => {
+    if (enablePauseAds && isPaused && !isLive) {
+      // Small delay to avoid showing ad immediately on pause
+      const timer = setTimeout(() => {
+        setShowPauseAd(true);
+      }, 1000); // 1 second delay
+      
+      return () => clearTimeout(timer);
+    } else {
+      setShowPauseAd(false);
+    }
+  }, [enablePauseAds, isPaused, isLive]);
 
   const handleMouseMove = () => {
     setControlsVisible(true);
@@ -164,7 +211,16 @@ export function VideoPlayerWithInteractions({
         mode="sidebar"
         viewerCount={viewerCount}
         isLive={isLive}
+        currentVideoTime={currentVideoTime}
         enabledFeatures={interactionConfig.features}
+      />
+
+      {/* Pause Screen Ad */}
+      <PauseScreenAd
+        isVisible={showPauseAd}
+        onClose={() => setShowPauseAd(false)}
+        onAdClick={handleAdClick}
+        onAdImpression={handleAdImpression}
       />
     </div>
   );

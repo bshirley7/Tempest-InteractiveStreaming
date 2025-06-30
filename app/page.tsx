@@ -209,7 +209,7 @@ function HomePageContent() {
                     <ChevronRight className="ml-2 w-5 h-5" />
                   </Button>
                 </Link>
-                <Link href="/live">
+                <Link href="https://youtu.be/DU5wovu2nJM?si=o2mcOInWtaK4JQp3">
                   <Button size="lg" variant="outline" className="border-white/20 hover:bg-white/10 text-white px-8 py-6 text-lg backdrop-blur-sm">
                     <Play className="mr-2 w-5 h-5" />
                     See Demo

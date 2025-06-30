@@ -22,7 +22,7 @@ interface ImageAd {
 const COMPANY_INFO = {
   name: 'PrimeZoom',
   tagline: 'Everything You Need (Sort Of)',
-  description: 'Online marketplace for budget-conscious students needing everything. Need a $300 textbook for $30? PrimeZoom has "vintage" editions that are definitely not photocopies.',
+  description: 'Online marketplace for budget-conscious students needing everything. Need a $300 textbook for $30? PrimeZoom has &quot;vintage&quot; editions that are definitely not photocopies.',
   logoPath: '/company-logos/primezoom-logo.svg',
   brandColor: '#F59E0B',
   accentColor: '#F59E0B20'
@@ -199,7 +199,7 @@ export default function PrimeZoomCampaignPage() {
                     </Badge>
                   </div>
                   <div className="mt-2 text-xs text-gray-500">
-                    {ad.clicks} clicks " {((ad.clicks / ad.impressions) * 100).toFixed(1)}% CTR
+                    {ad.clicks} clicks &bull; {((ad.clicks / ad.impressions) * 100).toFixed(1)}% CTR
                   </div>
                 </CardContent>
               </Card>
@@ -208,7 +208,7 @@ export default function PrimeZoomCampaignPage() {
 
           {filteredImageAds.length === 0 && (
             <div className="text-center py-12">
-              <div className="text-gray-400 text-lg">No products found for "{selectedCategory}"</div>
+              <div className="text-gray-400 text-lg">No products found for &quot;{selectedCategory}&quot;</div>
             </div>
           )}
         </div>

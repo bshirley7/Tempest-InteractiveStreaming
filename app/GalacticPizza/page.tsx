@@ -21,7 +21,7 @@ interface ImageAd {
 const COMPANY_INFO = {
   name: 'Galactic Pizza',
   tagline: 'The Best Pizza in the Universe',
-  description: 'Food delivery for hungry students and late-night study sessions. When you\'re cramming for finals, fuel up with Galactic Pizza - delivered faster than light speed!',
+  description: 'Food delivery for hungry students and late-night study sessions. When you&apos;re cramming for finals, fuel up with Galactic Pizza - delivered faster than light speed!',
   logoPath: '/company-logos/galactic-pizza-logo.svg',
   brandColor: '#8B5CF6',
   accentColor: '#8B5CF620'
@@ -196,7 +196,7 @@ export default function GalacticPizzaCampaignPage() {
                   </Badge>
                 </div>
                 <div className="mt-2 text-xs text-gray-500">
-                  {ad.clicks} clicks " {((ad.clicks / ad.impressions) * 100).toFixed(1)}% CTR
+                  {ad.clicks} clicks &bull; {((ad.clicks / ad.impressions) * 100).toFixed(1)}% CTR
                 </div>
               </CardContent>
             </Card>
@@ -205,7 +205,7 @@ export default function GalacticPizzaCampaignPage() {
 
         {filteredImageAds.length === 0 && (
           <div className="text-center py-12">
-            <div className="text-gray-400 text-lg">No ads found for "{selectedCategory}"</div>
+            <div className="text-gray-400 text-lg">No ads found for &quot;{selectedCategory}&quot;</div>
           </div>
         )}
       </div>

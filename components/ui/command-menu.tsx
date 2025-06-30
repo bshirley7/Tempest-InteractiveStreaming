@@ -127,7 +127,7 @@ export function CommandMenu({ onCommandSelect, size = 'md', className, isLive = 
               <ul className="space-y-1 text-gray-400">
                 <li>• Use commas to separate options</li>
                 <li>• For quiz: first option is the correct answer</li>
-                <li>• Commands won't appear in {isLive ? 'chat' : 'comments'}</li>
+                <li>• Commands won&apos;t appear in {isLive ? 'chat' : 'comments'}</li>
               </ul>
             </div>
           </div>

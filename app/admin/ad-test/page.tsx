@@ -110,7 +110,7 @@ export default function AdTestPage() {
             <div className="text-sm text-muted-foreground">
               <p><strong>How it works:</strong></p>
               <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>Fetches random video marked as 'advertisement' from content table</li>
+                <li>Fetches random video marked as &apos;advertisement&apos; from content table</li>
                 <li>Only returns published advertisements</li>
                 <li>Automatically generates video URLs using Cloudflare Stream</li>
                 <li>Includes skip controls (5 seconds)</li>
@@ -188,7 +188,7 @@ export default function AdTestPage() {
               <div className="text-center py-8 text-muted-foreground">
                 <Video className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>No advertisement loaded yet.</p>
-                <p className="text-sm mt-2">Click "Fetch Random Advertisement" to test the system.</p>
+                <p className="text-sm mt-2">Click &quot;Fetch Random Advertisement&quot; to test the system.</p>
               </div>
             )}
           </CardContent>

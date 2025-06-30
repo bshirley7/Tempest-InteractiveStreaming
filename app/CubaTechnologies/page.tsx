@@ -21,7 +21,7 @@ interface ImageAd {
 const COMPANY_INFO = {
   name: 'Cuba Technologies',
   tagline: 'Show Me the Money!',
-  description: 'AI/GPU Tech recruiting for Computer Science, AI/ML, and Engineering students. Your CUDA skills are worth millions. We\'ll show you what you\'ve got, and we\'ll show you the money!',
+  description: 'AI/GPU Tech recruiting for Computer Science, AI/ML, and Engineering students. Your CUDA skills are worth millions. We&apos;ll show you what you&apos;ve got, and we&apos;ll show you the money!',
   logoPath: '/company-logos/cuba-technologies-logo.svg',
   brandColor: '#10B981',
   accentColor: '#10B98120'
@@ -51,7 +51,7 @@ const SAMPLE_IMAGE_ADS: ImageAd[] = [
   {
     id: '3',
     title: 'Cuba Tech - Entry Level Programs',
-    description: 'New grads welcome - we\'ll train you to be elite',
+    description: 'New grads welcome - we&apos;ll train you to be elite',
     imageUrl: 'https://images.unsplash.com/photo-1571171637578-41bc2dd41cd2?w=600&h=400&fit=crop',
     category: 'Entry Level',
     clicks: 756,
@@ -196,7 +196,7 @@ export default function CubaTechnologiesCampaignPage() {
                   </Badge>
                 </div>
                 <div className="mt-2 text-xs text-gray-500">
-                  {ad.clicks} clicks " {((ad.clicks / ad.impressions) * 100).toFixed(1)}% CTR
+                  {ad.clicks} clicks &bull; {((ad.clicks / ad.impressions) * 100).toFixed(1)}% CTR
                 </div>
               </CardContent>
             </Card>
@@ -205,7 +205,7 @@ export default function CubaTechnologiesCampaignPage() {
 
         {filteredImageAds.length === 0 && (
           <div className="text-center py-12">
-            <div className="text-gray-400 text-lg">No positions found for "{selectedCategory}"</div>
+            <div className="text-gray-400 text-lg">No positions found for &quot;{selectedCategory}&quot;</div>
           </div>
         )}
       </div>

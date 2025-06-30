@@ -31,7 +31,7 @@ const SAMPLE_IMAGE_ADS: ImageAd[] = [
   {
     id: '1',
     title: 'PSU - Fall Enrollment Open',
-    description: 'Join 183,000 students at Arizona\'s premier university',
+    description: 'Join 183,000 students at Arizona&apos;s premier university',
     imageUrl: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=600&h=400&fit=crop',
     category: 'Admissions',
     clicks: 2100,
@@ -218,7 +218,7 @@ export default function PhoenixStateUniversityCampaignPage() {
                   </Badge>
                 </div>
                 <div className="mt-2 text-xs text-gray-500">
-                  {ad.clicks} clicks " {((ad.clicks / ad.impressions) * 100).toFixed(1)}% CTR
+                  {ad.clicks} clicks &bull; {((ad.clicks / ad.impressions) * 100).toFixed(1)}% CTR
                 </div>
               </CardContent>
             </Card>
@@ -227,7 +227,7 @@ export default function PhoenixStateUniversityCampaignPage() {
 
         {filteredImageAds.length === 0 && (
           <div className="text-center py-12">
-            <div className="text-gray-400 text-lg">No campaigns found for "{selectedCategory}"</div>
+            <div className="text-gray-400 text-lg">No campaigns found for &quot;{selectedCategory}&quot;</div>
           </div>
         )}
       </div>

@@ -37,7 +37,7 @@ interface ImageAd {
 const COMPANY_INFO = {
   name: 'Liquid Thunder',
   tagline: 'Strike Your Thirst Dead!',
-  description: 'A hilarious parody of Liquid Death, celebrating their outrageous marketing with our own spin. Murder your thirst with this energy drink that\'s more metal than a concert in a thunderstorm!',
+  description: 'A hilarious parody of Liquid Death, celebrating their outrageous marketing with our own spin. Murder your thirst with this energy drink that&apos;s more metal than a concert in a thunderstorm!',
   logoPath: '/company-logos/liquid-thunder-logo.svg',
   brandColor: '#3B82F6',
   accentColor: '#3B82F620'
@@ -47,7 +47,7 @@ const heroContent = [
   {
     id: 1,
     title: "Strike Your Thirst Dead",
-    description: "Murder your thirst with explosive energy that\'s more metal than your playlist",
+    description: "Murder your thirst with explosive energy that&apos;s more metal than your playlist",
     thumbnail: "https://pub-d9c4b95565b6412297d31adfcf35620b.r2.dev/LiquidThunder_AdImage_08.png",
     category: "Energy Boost",
     useAdImage: true,
@@ -56,7 +56,7 @@ const heroContent = [
   {
     id: 2,
     title: "Gaming Domination",
-    description: "Destroy noobs with sustained energy that\'s deadlier than a headshot",
+    description: "Destroy noobs with sustained energy that&apos;s deadlier than a headshot",
     thumbnail: "https://pub-d9c4b95565b6412297d31adfcf35620b.r2.dev/LiquidThunder_AdImage_07.png",
     category: "Gaming",
     useAdImage: true,
@@ -178,9 +178,7 @@ const adCategories = [
 
 export default function LiquidThunderCampaignPage() {
   const [selectedContent, setSelectedContent] = useState(0);
-  const [selectedAdCategory, setSelectedAdCategory] = useState(0);
   const [companyVideos, setCompanyVideos] = useState([]);
-  const [companyImages, setCompanyImages] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Auto-fetch videos for this company
@@ -206,26 +204,6 @@ export default function LiquidThunderCampaignPage() {
         setLoading(false);
       });
 
-    // Load images from localStorage (from advertising overlays)
-    const savedImages = localStorage.getItem('r2AdImages');
-    if (savedImages) {
-      const allImages = JSON.parse(savedImages);
-      const liquidThunderImages = allImages.filter(img => img.company === companyKey);
-      
-      // Transform to match ad format
-      const transformedImages = liquidThunderImages.map(img => ({
-        id: img.id,
-        title: img.title,
-        description: img.description,
-        imageUrl: `https://pub-d9c4b95565b6412297d31adfcf35620b.r2.dev/${img.filename}`,
-        category: 'AI Generated Advertisement',
-        generatedBy: 'AI',
-        process: 'Structured Prompting & AI Generation',
-        createdAt: img.createdAt.split('T')[0]
-      }));
-      
-      setCompanyImages(transformedImages);
-    }
   }, []);
 
   // Handle video play - navigate to watch page
@@ -234,19 +212,13 @@ export default function LiquidThunderCampaignPage() {
     window.location.href = video.videoUrl;
   };
 
-  // Dynamic ad categories using fetched videos and images
+  // Dynamic ad categories using fetched videos only
   const dynamicAdCategories = [
     {
       name: "Video Ads",
       title: "AI-Generated Video Content",
       description: "AI-powered video advertisements created through structured prompting and automated generation",
       ads: Array.isArray(companyVideos) ? companyVideos : []
-    },
-    {
-      name: "Image Ads", 
-      title: "AI-Generated Visuals",
-      description: "AI-powered advertisement images showcasing innovative creative technology",
-      ads: Array.isArray(companyImages) ? companyImages : []
     }
   ];
 
@@ -306,7 +278,7 @@ export default function LiquidThunderCampaignPage() {
                   {COMPANY_INFO.tagline}
                 </p>
                 <p className="text-xl md:text-2xl text-gray-300 mb-8">
-                  A hilarious parody of Liquid Death, celebrating their outrageous marketing with our own spin. Murder your thirst with this energy drink that's more metal than a concert in a thunderstorm!
+                  A hilarious parody of Liquid Death, celebrating their outrageous marketing with our own spin. Murder your thirst with this energy drink that&apos;s more metal than a concert in a thunderstorm!
                 </p>
                 
               </motion.div>
@@ -344,48 +316,30 @@ export default function LiquidThunderCampaignPage() {
                 Our Ad Campaigns
               </h2>
               <p className="text-xl text-gray-400">
-                Marketing content showcasing Liquid Thunder's explosive energy experience
+                Marketing content showcasing Liquid Thunder&apos;s explosive energy experience
               </p>
             </motion.div>
 
-            {/* Ad Category Tabs */}
+            {/* Video Ads Section */}
             <div className="flex justify-center mb-12">
-              <div className="bg-zinc-900/50 backdrop-blur-sm rounded-full p-1 flex gap-2">
-                {dynamicAdCategories.map((category, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedAdCategory(index)}
-                    className={cn(
-                      "px-6 py-3 rounded-full transition-all duration-300 flex items-center gap-2",
-                      selectedAdCategory === index
-                        ? "bg-gradient-to-r from-blue-400 to-purple-500 text-white shadow-lg font-bold"
-                        : "text-gray-400 hover:text-white"
-                    )}
-                  >
-                    {index === 0 ? <Play className="w-4 h-4" /> : <ImageIcon className="w-4 h-4" />}
-                    {category.name}
-                  </button>
-                ))}
+              <div className="bg-zinc-900/50 backdrop-blur-sm rounded-full p-1">
+                <div className="px-6 py-3 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 text-white shadow-lg font-bold flex items-center gap-2">
+                  <Play className="w-4 h-4" />
+                  Video Ads
+                </div>
               </div>
             </div>
 
             {/* Ad Campaign Content */}
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={selectedAdCategory}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.5 }}
-              >
-                <div className="text-center mb-12">
-                  <h3 className="text-3xl font-bold mb-4 text-white">
-                    {dynamicAdCategories[selectedAdCategory].title}
-                  </h3>
-                  <p className="text-gray-400 text-lg">
-                    {dynamicAdCategories[selectedAdCategory].description}
-                  </p>
-                </div>
+            <div>
+              <div className="text-center mb-12">
+                <h3 className="text-3xl font-bold mb-4 text-white">
+                  {dynamicAdCategories[0].title}
+                </h3>
+                <p className="text-gray-400 text-lg">
+                  {dynamicAdCategories[0].description}
+                </p>
+              </div>
 
                 {loading ? (
                   <div className="text-center py-12">
@@ -393,7 +347,7 @@ export default function LiquidThunderCampaignPage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {(dynamicAdCategories[selectedAdCategory]?.ads || []).map((ad, index) => (
+                    {(dynamicAdCategories[0]?.ads || []).map((ad, index) => (
                     <motion.div
                       key={ad.id}
                       initial={{ opacity: 0, y: 20 }}
@@ -459,17 +413,16 @@ export default function LiquidThunderCampaignPage() {
                       </Card>
                     </motion.div>
                     ))}
-                    {dynamicAdCategories[selectedAdCategory]?.ads?.length === 0 && (
+                    {dynamicAdCategories[0]?.ads?.length === 0 && (
                       <div className="col-span-full text-center py-12">
                         <div className="text-gray-400 text-lg">
-                          No {dynamicAdCategories[selectedAdCategory]?.name.toLowerCase()} found for {COMPANY_INFO.name}
+                          No {dynamicAdCategories[0]?.name.toLowerCase()} found for {COMPANY_INFO.name}
                         </div>
                       </div>
                     )}
                   </div>
                 )}
-              </motion.div>
-            </AnimatePresence>
+            </div>
           </div>
         </section>
 

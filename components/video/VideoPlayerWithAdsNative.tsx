@@ -162,9 +162,6 @@ export function VideoPlayerWithAdsNative({
             setEnableAds(false);
           }
         }}
-        onStreamAdStart={handleAdStart}
-        onStreamAdEnd={handleAdEnd}
-        onStreamAdTimeout={handleAdTimeout}
         style={{ width: '100%', height: '100%' }}
       />
 

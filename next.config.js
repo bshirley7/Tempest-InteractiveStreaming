@@ -112,24 +112,4 @@ const nextConfig = {
   transpilePackages: ['@opentelemetry/instrumentation'],
 };
 
-// Only enable Sentry in production with proper configuration
-const { withSentryConfig } = require('@sentry/nextjs');
-const SENTRY_DSN = process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN;
-const shouldUseSentry = SENTRY_DSN && process.env.NODE_ENV === 'production';
-
-module.exports = shouldUseSentry ? withSentryConfig(
-  nextConfig,
-  {
-    silent: true,
-    org: process.env.SENTRY_ORG,
-    project: process.env.SENTRY_PROJECT,
-  },
-  {
-    widenClientFileUpload: true,
-    transpileClientSDK: true,
-    tunnelRoute: '/monitoring',
-    hideSourceMaps: true,
-    disableLogger: true,
-    automaticVercelMonitors: true,
-  }
-) : nextConfig;
+module.exports = nextConfig;

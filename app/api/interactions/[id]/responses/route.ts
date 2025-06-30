@@ -4,7 +4,7 @@ import { auth } from '@clerk/nextjs/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createServiceClient();
@@ -13,7 +13,7 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Database connection not configured' }, { status: 500 });
     }
 
-    const { id: interactionId } = params;
+    const { id: interactionId } = await params;
 
     const { data, error } = await supabase
       .from('interaction_responses')
@@ -35,7 +35,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Get authenticated user ID from Clerk
@@ -53,7 +53,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Database connection not configured' }, { status: 500 });
     }
 
-    const { id: interactionId } = params;
+    const { id: interactionId } = await params;
     const body = await request.json();
     const { response_data = {} } = body;
 

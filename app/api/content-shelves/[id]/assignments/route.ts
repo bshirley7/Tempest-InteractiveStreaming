@@ -3,7 +3,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createServiceClient();
@@ -11,7 +11,7 @@ export async function GET(
     if (!supabase) {
       return NextResponse.json({ success: false, error: 'Database connection not configured' }, { status: 500 });
     }
-    const { id: shelfId } = params;
+    const { id: shelfId } = await params;
 
     const { data, error } = await supabase
       .from('content_shelf_assignments')
@@ -54,7 +54,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createServiceClient();
@@ -62,7 +62,7 @@ export async function POST(
     if (!supabase) {
       return NextResponse.json({ success: false, error: 'Database connection not configured' }, { status: 500 });
     }
-    const { id: shelfId } = params;
+    const { id: shelfId } = await params;
     const body = await request.json();
     const { content_id, display_order } = body;
 
@@ -106,7 +106,7 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createServiceClient();
@@ -114,7 +114,7 @@ export async function DELETE(
     if (!supabase) {
       return NextResponse.json({ success: false, error: 'Database connection not configured' }, { status: 500 });
     }
-    const { id: shelfId } = params;
+    const { id: shelfId } = await params;
     const { searchParams } = new URL(request.url);
     const contentId = searchParams.get('content_id');
 

@@ -190,7 +190,7 @@ export default function LiquidThunderCampaignPage() {
       .then(res => res.json())
       .then(videos => {
         // Mark videos as AI-generated and add structured process info
-        const aiVideos = videos.map(video => ({
+        const aiVideos = videos.map((video: any) => ({
           ...video,
           generatedBy: 'AI',
           category: 'AI Generated Advertisement',
@@ -207,7 +207,7 @@ export default function LiquidThunderCampaignPage() {
   }, []);
 
   // Handle video play - navigate to watch page
-  const handleVideoPlay = (video) => {
+  const handleVideoPlay = (video: any) => {
     // Navigate to the watch page for this video
     window.location.href = video.videoUrl;
   };
@@ -253,7 +253,7 @@ export default function LiquidThunderCampaignPage() {
                   className="object-contain opacity-90 hover:opacity-100 transition-opacity duration-300 drop-shadow-2xl"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
-                    e.currentTarget.nextElementSibling!.style.display = 'flex';
+                    (e.currentTarget.nextElementSibling as HTMLElement)!.style.display = 'flex';
                   }}
                 />
                 <div 
@@ -347,7 +347,7 @@ export default function LiquidThunderCampaignPage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {(dynamicAdCategories[0]?.ads || []).map((ad, index) => (
+                    {(dynamicAdCategories[0]?.ads || []).map((ad: any, index) => (
                     <motion.div
                       key={ad.id}
                       initial={{ opacity: 0, y: 20 }}

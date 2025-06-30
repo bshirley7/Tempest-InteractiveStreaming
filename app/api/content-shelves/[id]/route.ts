@@ -3,7 +3,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createServiceClient();
@@ -12,7 +12,7 @@ export async function PUT(
       return NextResponse.json({ success: false, error: 'Database connection not configured' }, { status: 500 });
     }
     const body = await request.json();
-    const { id } = params;
+    const { id } = await params;
 
     const { name, description, layout_style, aspect_ratio, max_items, display_order, is_active } = body;
 
@@ -46,7 +46,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createServiceClient();
@@ -54,7 +54,7 @@ export async function DELETE(
     if (!supabase) {
       return NextResponse.json({ success: false, error: 'Database connection not configured' }, { status: 500 });
     }
-    const { id } = params;
+    const { id } = await params;
 
     const { error } = await supabase
       .from('content_shelves')

@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -14,6 +14,8 @@ export async function GET(
         { status: 500 }
       );
     }
+
+    const { id } = await params;
 
     // Fetch content by ID with channel information through junction table
     const { data: content, error } = await supabase
@@ -29,7 +31,7 @@ export async function GET(
           )
         )
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
     
     if (error) {

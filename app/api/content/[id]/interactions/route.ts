@@ -3,7 +3,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createServiceClient();
@@ -15,7 +15,7 @@ export async function GET(
       }, { status: 500 });
     }
 
-    const contentId = params.id;
+    const { id: contentId } = await params;
 
     if (!contentId) {
       return NextResponse.json({ 
@@ -86,7 +86,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createServiceClient();
@@ -98,7 +98,7 @@ export async function POST(
       }, { status: 500 });
     }
 
-    const contentId = params.id;
+    const { id: contentId } = await params;
     const body = await request.json();
     
     const { 

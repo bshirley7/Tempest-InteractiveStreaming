@@ -3,10 +3,11 @@ import { createClient } from '@/lib/supabase/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log('Debug video API called for ID:', params.id);
+    const { id } = await params;
+    console.log('Debug video API called for ID:', id);
     
     const supabase = await createClient();
     
@@ -22,7 +23,7 @@ export async function GET(
     const { data: basicContent, error: basicError } = await supabase
       .from('content')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
     
     if (basicError) {
@@ -53,7 +54,7 @@ export async function GET(
         *,
         channels!left(id, name, slug, category)
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     // Get channel info separately if there's a channel_id
@@ -72,7 +73,7 @@ export async function GET(
     return NextResponse.json({
       success: true,
       debug: {
-        contentId: params.id,
+        contentId: id,
         hasCloudflareVideoId: !!basicContent.cloudflare_video_id,
         cloudflareVideoId: basicContent.cloudflare_video_id,
         hasChannelId: !!basicContent.channel_id,

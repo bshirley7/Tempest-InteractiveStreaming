@@ -3,10 +3,11 @@ import { getStreamVideo, updateStreamVideo, deleteStreamVideo } from '@/lib/stre
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const video = await getStreamVideo(params.id);
+    const { id } = await params;
+    const video = await getStreamVideo(id);
     return NextResponse.json(video);
   } catch (error) {
     console.error('Error getting video:', error);
@@ -19,11 +20,12 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
-    const updatedVideo = await updateStreamVideo(params.id, body);
+    const updatedVideo = await updateStreamVideo(id, body);
     return NextResponse.json(updatedVideo);
   } catch (error) {
     console.error('Error updating video:', error);
@@ -36,10 +38,11 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const success = await deleteStreamVideo(params.id);
+    const { id } = await params;
+    const success = await deleteStreamVideo(id);
     
     if (success) {
       return NextResponse.json({ success: true, message: 'Video deleted successfully' });

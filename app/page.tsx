@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useUser } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/layout/header';
-import { WelcomeSection } from '@/components/layout/welcome-section';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import Link from 'next/link';
@@ -152,10 +151,7 @@ function HomePageContent() {
     );
   }
 
-  if (isClerkConfigured && !isSignedIn) {
-    return <WelcomeSection />;
-  }
-
+  // Show the main interactive streaming platform landing page for all users
   return (
     <div className="min-h-screen bg-black text-white overflow-x-hidden">
       <Header />

@@ -24,15 +24,21 @@ import {
   Pause,
   Clock,
   Users,
-  CheckCircle
+  CheckCircle,
+  Video,
+  BookOpen,
+  Calendar,
+  Target
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ContentInteractionTemplates } from './content-interaction-templates';
 
 interface Interaction {
   id: string;
   type: 'poll' | 'quiz' | 'rating' | 'reaction';
   title: string;
-  question: string;
+  description: string;
+  question?: string; // For backwards compatibility
   options: any;
   correct_answer: string | null;
   time_limit: number | null;
@@ -42,10 +48,13 @@ interface Interaction {
   metadata: any;
   created_at: string;
   updated_at: string;
+  content_id?: string;
+  channel_id?: string;
   channels?: {
     name: string;
   };
   content?: {
+    id: string;
     title: string;
   };
 }
@@ -68,16 +77,19 @@ export function InteractionManagement() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingInteraction, setEditingInteraction] = useState<Interaction | null>(null);
   const [activeTab, setActiveTab] = useState('all');
+  const [selectedContentId, setSelectedContentId] = useState<string>('');
   const [formData, setFormData] = useState({
     type: 'poll' as 'poll' | 'quiz' | 'rating' | 'reaction',
     title: '',
-    question: '',
+    description: '',
     channel_id: '',
     content_id: '',
     options: ['', ''],
     correct_answer: '',
     time_limit: 30,
-    is_active: false
+    is_active: false,
+    trigger_time: '', // When in video to trigger (MM:SS format)
+    auto_activate: false // Auto-activate when video reaches trigger time
   });
 
   useEffect(() => {
@@ -88,21 +100,14 @@ export function InteractionManagement() {
 
   const fetchInteractions = async () => {
     try {
-      const { data, error } = await supabase
-        .from('interactions')
-        .select(`
-          *,
-          channels (
-            name
-          ),
-          content (
-            title
-          )
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setInteractions(data || []);
+      const response = await fetch('/api/interactions');
+      const result = await response.json();
+      
+      if (result.success) {
+        setInteractions(result.data || []);
+      } else {
+        throw new Error(result.error || 'Failed to fetch interactions');
+      }
     } catch (error) {
       console.error('Error fetching interactions:', error);
       toast.error('Failed to load interactions');
@@ -168,7 +173,7 @@ export function InteractionManagement() {
       const interactionData = {
         type: formData.type,
         title: formData.title,
-        question: formData.question,
+        description: formData.description,
         channel_id: formData.channel_id || null,
         content_id: formData.content_id || null,
         options,
@@ -178,28 +183,39 @@ export function InteractionManagement() {
         starts_at: formData.is_active ? new Date().toISOString() : null,
         ends_at: formData.is_active && formData.time_limit 
           ? new Date(Date.now() + formData.time_limit * 1000).toISOString() 
-          : null
+          : null,
+        metadata: {
+          trigger_time: formData.trigger_time,
+          auto_activate: formData.auto_activate,
+          content_specific: !!formData.content_id
+        }
       };
 
       if (editingInteraction) {
         // Update existing interaction
-        const { error } = await supabase
-          .from('interactions')
-          .update({
-            ...interactionData,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingInteraction.id);
+        const response = await fetch(`/api/interactions`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: editingInteraction.id, ...interactionData })
+        });
 
-        if (error) throw error;
+        if (!response.ok) {
+          throw new Error('Failed to update interaction');
+        }
+        
         toast.success('Interaction updated successfully');
       } else {
         // Create new interaction
-        const { error } = await supabase
-          .from('interactions')
-          .insert(interactionData);
+        const response = await fetch('/api/interactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(interactionData)
+        });
 
-        if (error) throw error;
+        if (!response.ok) {
+          throw new Error('Failed to create interaction');
+        }
+        
         toast.success('Interaction created successfully');
       }
 
@@ -207,13 +223,15 @@ export function InteractionManagement() {
       setFormData({
         type: 'poll',
         title: '',
-        question: '',
+        description: '',
         channel_id: '',
         content_id: '',
         options: ['', ''],
         correct_answer: '',
         time_limit: 30,
-        is_active: false
+        is_active: false,
+        trigger_time: '',
+        auto_activate: false
       });
       setIsCreateDialogOpen(false);
       setEditingInteraction(null);
@@ -236,13 +254,15 @@ export function InteractionManagement() {
     setFormData({
       type: interaction.type,
       title: interaction.title,
-      question: interaction.question,
+      description: interaction.description || interaction.question || '',
       channel_id: '', // Would need to fetch from relations
       content_id: '', // Would need to fetch from relations
       options,
       correct_answer: interaction.correct_answer || '',
       time_limit: interaction.time_limit || 30,
-      is_active: interaction.is_active
+      is_active: interaction.is_active,
+      trigger_time: interaction.metadata?.trigger_time || '',
+      auto_activate: interaction.metadata?.auto_activate || false
     });
     setIsCreateDialogOpen(true);
   };
@@ -251,12 +271,16 @@ export function InteractionManagement() {
     if (!confirm('Are you sure you want to delete this interaction?')) return;
 
     try {
-      const { error } = await supabase
-        .from('interactions')
-        .delete()
-        .eq('id', interactionId);
+      const response = await fetch(`/api/interactions`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: interactionId })
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error('Failed to delete interaction');
+      }
+      
       toast.success('Interaction deleted successfully');
       fetchInteractions();
     } catch (error) {
@@ -269,8 +293,16 @@ export function InteractionManagement() {
     try {
       const newActiveState = !interaction.is_active;
       const updateData: any = { 
-        is_active: newActiveState,
-        updated_at: new Date().toISOString()
+        id: interaction.id,
+        type: interaction.type,
+        title: interaction.title,
+        description: interaction.description,
+        options: interaction.options,
+        correct_answer: interaction.correct_answer,
+        content_id: interaction.content_id,
+        channel_id: interaction.channel_id,
+        metadata: interaction.metadata,
+        is_active: newActiveState
       };
 
       if (newActiveState) {
@@ -282,12 +314,16 @@ export function InteractionManagement() {
         updateData.ends_at = new Date().toISOString();
       }
 
-      const { error } = await supabase
-        .from('interactions')
-        .update(updateData)
-        .eq('id', interaction.id);
+      const response = await fetch('/api/interactions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error('Failed to toggle interaction');
+      }
+      
       toast.success(`Interaction ${newActiveState ? 'activated' : 'deactivated'}`);
       fetchInteractions();
     } catch (error) {
@@ -352,10 +388,24 @@ export function InteractionManagement() {
   };
 
   const filteredInteractions = interactions.filter(interaction => {
+    // Filter by content first - need to check the actual field from the database join
+    if (selectedContentId && selectedContentId !== 'all') {
+      // The interaction might have content_id field directly or through join
+      const interactionContentId = interaction.content_id || interaction.content?.id;
+      if (interactionContentId !== selectedContentId) {
+        return false;
+      }
+    }
+    
+    // Then filter by tab
     if (activeTab === 'all') return true;
     if (activeTab === 'active') return interaction.is_active;
     return interaction.type === activeTab;
   });
+
+  const selectedContent = selectedContentId && selectedContentId !== 'all' 
+    ? content.find(c => c.id === selectedContentId) 
+    : null;
 
   if (loading) {
     return (
@@ -379,13 +429,15 @@ export function InteractionManagement() {
               setFormData({
                 type: 'poll',
                 title: '',
-                question: '',
+                description: '',
                 channel_id: '',
                 content_id: '',
                 options: ['', ''],
                 correct_answer: '',
                 time_limit: 30,
-                is_active: false
+                is_active: false,
+                trigger_time: '',
+                auto_activate: false
               });
             }}>
               <Plus className="h-4 w-4 mr-2" />
@@ -430,34 +482,58 @@ export function InteractionManagement() {
               </div>
 
               <div>
-                <Label htmlFor="question">Question</Label>
+                <Label htmlFor="description">Question</Label>
                 <Textarea
-                  id="question"
-                  value={formData.question}
-                  onChange={(e) => setFormData({ ...formData, question: e.target.value })}
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Enter your question"
                   rows={3}
                   required
                 />
               </div>
 
-              <div>
-                <Label htmlFor="channel">Channel</Label>
-                <Select
-                  value={formData.channel_id}
-                  onValueChange={(value) => setFormData({ ...formData, channel_id: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a channel (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {channels.map((channel) => (
-                      <SelectItem key={channel.id} value={channel.id}>
-                        {channel.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="channel">Channel</Label>
+                  <Select
+                    value={formData.channel_id}
+                    onValueChange={(value) => setFormData({ ...formData, channel_id: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a channel (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {channels.map((channel) => (
+                        <SelectItem key={channel.id} value={channel.id}>
+                          {channel.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="content">Video Content</Label>
+                  <Select
+                    value={formData.content_id}
+                    onValueChange={(value) => setFormData({ ...formData, content_id: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select video (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {content.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          <div className="flex items-center space-x-2">
+                            <Video className="w-4 h-4" />
+                            <span>{item.title}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {(formData.type === 'poll' || formData.type === 'quiz') && (
@@ -523,25 +599,53 @@ export function InteractionManagement() {
                 </div>
               )}
 
-              <div>
-                <Label htmlFor="time_limit">Time Limit (seconds)</Label>
-                <Input
-                  id="time_limit"
-                  type="number"
-                  value={formData.time_limit}
-                  onChange={(e) => setFormData({ ...formData, time_limit: parseInt(e.target.value) || 30 })}
-                  min="10"
-                  max="300"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="time_limit">Time Limit (seconds)</Label>
+                  <Input
+                    id="time_limit"
+                    type="number"
+                    value={formData.time_limit}
+                    onChange={(e) => setFormData({ ...formData, time_limit: parseInt(e.target.value) || 30 })}
+                    min="10"
+                    max="300"
+                  />
+                </div>
+
+                {formData.content_id && (
+                  <div>
+                    <Label htmlFor="trigger_time">Trigger Time (MM:SS)</Label>
+                    <Input
+                      id="trigger_time"
+                      value={formData.trigger_time}
+                      onChange={(e) => setFormData({ ...formData, trigger_time: e.target.value })}
+                      placeholder="e.g., 05:30"
+                      pattern="[0-9]{1,2}:[0-9]{2}"
+                    />
+                  </div>
+                )}
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="is_active"
-                  checked={formData.is_active}
-                  onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-                />
-                <Label htmlFor="is_active">Activate immediately</Label>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="is_active"
+                    checked={formData.is_active}
+                    onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                  />
+                  <Label htmlFor="is_active">Activate immediately</Label>
+                </div>
+
+                {formData.content_id && formData.trigger_time && (
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="auto_activate"
+                      checked={formData.auto_activate}
+                      onCheckedChange={(checked) => setFormData({ ...formData, auto_activate: checked })}
+                    />
+                    <Label htmlFor="auto_activate">Auto-activate at trigger time</Label>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end space-x-2">
@@ -556,6 +660,59 @@ export function InteractionManagement() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Content Filter and Templates */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div>
+                <Label>Filter by Video Content</Label>
+                <Select value={selectedContentId} onValueChange={setSelectedContentId}>
+                  <SelectTrigger className="w-[300px]">
+                    <SelectValue placeholder="All videos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All videos</SelectItem>
+                    {content.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        <div className="flex items-center space-x-2">
+                          <Video className="w-4 h-4" />
+                          <span>{item.title}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {selectedContent && (
+                <div className="flex items-center space-x-2">
+                  <Badge variant="secondary" className="flex items-center space-x-1">
+                    <Video className="w-3 h-3" />
+                    <span>{selectedContent.title}</span>
+                  </Badge>
+                  <span className="text-muted-foreground">•</span>
+                  <span className="text-sm text-muted-foreground">
+                    {filteredInteractions.length} interaction(s)
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {selectedContent && (
+              <ContentInteractionTemplates
+                contentId={selectedContent.id}
+                contentTitle={selectedContent.title}
+                onTemplateApplied={() => {
+                  fetchInteractions();
+                  toast.success('Interaction templates applied successfully!');
+                }}
+              />
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
@@ -598,8 +755,33 @@ export function InteractionManagement() {
                 <CardContent>
                   <div className="space-y-3">
                     <p className="text-sm text-muted-foreground line-clamp-2">
-                      {interaction.question}
+                      {interaction.description || interaction.question}
                     </p>
+
+                    {/* Content Info */}
+                    {interaction.content && (
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="secondary" className="flex items-center space-x-1">
+                          <Video className="w-3 h-3" />
+                          <span className="truncate max-w-[100px]">{interaction.content.title}</span>
+                        </Badge>
+                      </div>
+                    )}
+
+                    {/* Trigger Time Info */}
+                    {interaction.metadata?.trigger_time && (
+                      <div className="flex items-center space-x-2 text-sm">
+                        <Badge variant="outline" className="flex items-center space-x-1">
+                          <Calendar className="w-3 h-3" />
+                          <span>@{interaction.metadata.trigger_time}</span>
+                        </Badge>
+                        {interaction.metadata?.auto_activate && (
+                          <Badge variant="secondary" className="text-xs">
+                            Auto-trigger
+                          </Badge>
+                        )}
+                      </div>
+                    )}
                     
                     <div className="flex items-center justify-between text-sm">
                       {interaction.time_limit && (

@@ -17,6 +17,7 @@ import { SimpleChannelManager } from './simple-channel-manager';
 import { AdvertisingDashboard } from './advertising-dashboard';
 import { ContentTypeManager } from './content-type-manager';
 import { ContentShelfManager } from './content-shelf-manager';
+import { ModerationManagement } from './moderation-management';
 import AdTestPage from '../../app/admin/ad-test/page';
 import { 
   Tv, 
@@ -81,13 +82,14 @@ export function AdminDashboard() {
         'advertising-test': { label: 'Ad Testing', icon: Play }
       }
     },
-    campus: { 
-      label: 'Campus', 
-      icon: Megaphone, 
+    communication: { 
+      label: 'Communication', 
+      icon: MessageSquare, 
       hasSubMenu: true,
       subItems: {
-        'campus-updates': { label: 'Announcements', icon: Megaphone },
-        'campus-interactions': { label: 'Interactions', icon: MessageSquare }
+        'communication-updates': { label: 'Announcements', icon: Megaphone },
+        'communication-interactions': { label: 'Interactions', icon: MessageSquare },
+        'communication-moderation': { label: 'Moderation', icon: Users }
       }
     }
   };
@@ -307,11 +309,11 @@ export function AdminDashboard() {
                     <p className="text-xs text-muted-foreground">Manage ad campaigns</p>
                   </button>
                   <button 
-                    onClick={() => handleTabChange('campus')}
+                    onClick={() => handleTabChange('communication')}
                     className="p-4 border rounded-lg hover:bg-muted transition-colors text-left"
                   >
-                    <Megaphone className="h-6 w-6 mb-2 text-primary" />
-                    <p className="font-medium">Campus</p>
+                    <MessageSquare className="h-6 w-6 mb-2 text-primary" />
+                    <p className="font-medium">Communication</p>
                     <p className="text-xs text-muted-foreground">Announcements and interactions</p>
                   </button>
                 </div>
@@ -347,10 +349,11 @@ export function AdminDashboard() {
           {activeSubTab === 'advertising-test' && <AdTestPage />}
         </TabsContent>
 
-        {/* Campus Section */}
-        <TabsContent value="campus">
-          {activeSubTab === 'campus-updates' && <UpdatesManagement />}
-          {activeSubTab === 'campus-interactions' && <InteractionManagement />}
+        {/* Communication Section */}
+        <TabsContent value="communication">
+          {activeSubTab === 'communication-updates' && <UpdatesManagement />}
+          {activeSubTab === 'communication-interactions' && <InteractionManagement />}
+          {activeSubTab === 'communication-moderation' && <ModerationManagement />}
         </TabsContent>
 
       </Tabs>

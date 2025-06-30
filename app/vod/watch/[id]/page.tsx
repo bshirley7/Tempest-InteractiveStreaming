@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { VideoPlayerWithCustomAds } from '@/components/video/VideoPlayerWithCustomAds';
 import { VideoPlayerWithInteractions } from '@/components/video/VideoPlayerWithInteractions';
@@ -17,6 +17,39 @@ export default function VODWatchPage() {
   const [error, setError] = useState<string | null>(null);
   const [showControls, setShowControls] = useState(false);
   const [controlsTimeout, setControlsTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Extract company name from advertisement content
+  const getCompanyName = () => {
+    if (!content || content.content_type !== 'advertisement') {
+      return null;
+    }
+
+    // Check metadata for company field
+    if (content.metadata?.company) {
+      return content.metadata.company;
+    }
+
+    // Try to extract from title (e.g., "Ad HungryHawk - Order Now")
+    const titleMatch = content.title.match(/Ad\s+(\w+)/);
+    if (titleMatch) {
+      return titleMatch[1];
+    }
+
+    // Try to extract from tags
+    if (content.tags && content.tags.length > 0) {
+      // Look for company-like tags (capitalized words)
+      const companyTag = content.tags.find(tag => 
+        /^[A-Z][a-zA-Z]+$/.test(tag) && tag.length > 2
+      );
+      if (companyTag) {
+        return companyTag;
+      }
+    }
+
+    return null;
+  };
+
+  const companyName = getCompanyName();
 
   useEffect(() => {
     const fetchContent = async () => {

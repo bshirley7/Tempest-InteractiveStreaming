@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CampaignBuilder } from './campaign-builder';
 import { CampaignDetail } from './campaign-detail';
+import { DirectR2Images } from './direct-r2-images';
 import { 
   Play, 
   Image, 
@@ -427,24 +428,7 @@ export function AdvertisingDashboard({ className }: AdvertisingDashboardProps) {
         </TabsContent>
 
         <TabsContent value="assets" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Overlay Assets</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <Image className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">Overlay Asset Management</h3>
-                <p className="text-muted-foreground mb-4">
-                  Manage image overlays stored in Cloudflare R2 for ad displays.
-                </p>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Upload Overlay Asset
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <DirectR2Images />
         </TabsContent>
 
         <TabsContent value="placements" className="space-y-6">

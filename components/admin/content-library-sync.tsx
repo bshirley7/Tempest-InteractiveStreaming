@@ -143,7 +143,7 @@ export function ContentLibrarySync() {
                   </div>
                 </div>
               ) : (
-                <div className="text-sm text-muted-foreground">Click "Check Status" to see sync status</div>
+                <div className="text-sm text-muted-foreground">Click &quot;Check Status&quot; to see sync status</div>
               )}
             </div>
             

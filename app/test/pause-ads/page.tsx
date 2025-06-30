@@ -354,11 +354,11 @@ export default function PauseAdsTestPage() {
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">2</span>
-                    <span>Ensure "Enable Pause Ads" is turned on</span>
+                    <span>Ensure &quot;Enable Pause Ads&quot; is turned on</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">3</span>
-                    <span>Click "Pause" to pause the video</span>
+                    <span>Click &quot;Pause&quot; to pause the video</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">4</span>

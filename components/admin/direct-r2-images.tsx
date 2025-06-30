@@ -176,7 +176,7 @@ export function DirectR2Images() {
               className="font-mono text-sm"
             />
             <p className="text-xs text-muted-foreground">
-              Enter your R2 bucket's public URL. Images will be accessed as: [URL]/filename.jpg
+              Enter your R2 bucket&apos;s public URL. Images will be accessed as: [URL]/filename.jpg
             </p>
           </div>
 

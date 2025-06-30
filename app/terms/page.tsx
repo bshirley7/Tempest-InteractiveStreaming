@@ -39,7 +39,7 @@ export default function TermsOfService() {
               <h2 className="text-2xl font-semibold mb-4 text-white">1. Acceptance of Terms</h2>
               <div className="text-gray-300 space-y-4">
                 <p>
-                  By accessing or using Tempest's interactive streaming platform ("Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, please do not use our Service.
+                  By accessing or using Tempest&apos;s interactive streaming platform (&quot;Service&quot;), you agree to be bound by these Terms of Service (&quot;Terms&quot;). If you do not agree to these Terms, please do not use our Service.
                 </p>
                 <p>
                   These Terms apply to all users of the Service, including viewers, content creators, and organizations.
@@ -85,9 +85,9 @@ export default function TermsOfService() {
                   You agree to use the Service only for lawful purposes and in accordance with these Terms. You agree not to:
                 </p>
                 <ul className="list-disc ml-6 space-y-2">
-                  <li>Upload, stream, or share content that is illegal, harmful, or violates others' rights</li>
+                  <li>Upload, stream, or share content that is illegal, harmful, or violates others&apos; rights</li>
                   <li>Harass, abuse, or harm other users of the Service</li>
-                  <li>Attempt to gain unauthorized access to the Service or other users' accounts</li>
+                  <li>Attempt to gain unauthorized access to the Service or other users&apos; accounts</li>
                   <li>Use the Service to distribute spam, malware, or other malicious content</li>
                   <li>Interfere with or disrupt the Service or servers connected to the Service</li>
                   <li>Violate any applicable laws or regulations</li>
@@ -155,7 +155,7 @@ export default function TermsOfService() {
               <h2 className="text-2xl font-semibold mb-4 text-white">9. Disclaimers and Limitation of Liability</h2>
               <div className="text-gray-300 space-y-4">
                 <p>
-                  <strong>Disclaimers:</strong> The Service is provided "as is" without warranties of any kind, either express or implied.
+                  <strong>Disclaimers:</strong> The Service is provided &quot;as is&quot; without warranties of any kind, either express or implied.
                 </p>
                 <p>
                   <strong>Limitation of Liability:</strong> To the maximum extent permitted by law, Tempest shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the Service.
@@ -185,7 +185,7 @@ export default function TermsOfService() {
               <h2 className="text-2xl font-semibold mb-4 text-white">12. Changes to Terms</h2>
               <div className="text-gray-300 space-y-4">
                 <p>
-                  We reserve the right to modify these Terms at any time. We will notify users of material changes by posting the updated Terms on our website and updating the "Last updated" date.
+                  We reserve the right to modify these Terms at any time. We will notify users of material changes by posting the updated Terms on our website and updating the &quot;Last updated&quot; date.
                 </p>
                 <p>
                   Your continued use of the Service after changes to the Terms constitutes acceptance of the new Terms.

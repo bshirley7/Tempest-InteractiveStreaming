@@ -667,7 +667,7 @@ function VideoForm({ onSubmit, loading, error }: { onSubmit: (data: any) => void
           required
         />
         <p className="text-xs text-muted-foreground">
-          This is the unique ID from Cloudflare Stream. The video will be marked as "pending" until Cloudflare finishes processing.
+          This is the unique ID from Cloudflare Stream. The video will be marked as &quot;pending&quot; until Cloudflare finishes processing.
         </p>
       </div>
       
@@ -715,9 +715,9 @@ function VideoForm({ onSubmit, loading, error }: { onSubmit: (data: any) => void
       <div className="text-xs text-muted-foreground border-t pt-3">
         <p className="font-medium mb-1">📝 Note about video processing:</p>
         <ul className="space-y-1 text-xs">
-          <li>• Videos start as "pending" until Cloudflare Stream processing completes</li>
-          <li>• Use the "Sync Status" button to check processing progress</li>
-          <li>• Only "approved" videos can be used in active ad placements</li>
+          <li>• Videos start as &quot;pending&quot; until Cloudflare Stream processing completes</li>
+          <li>• Use the &quot;Sync Status&quot; button to check processing progress</li>
+          <li>• Only &quot;approved&quot; videos can be used in active ad placements</li>
         </ul>
       </div>
     </form>

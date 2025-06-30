@@ -125,7 +125,7 @@ export default function PrivacyPolicy() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-white">7. Children's Privacy</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-white">7. Children&apos;s Privacy</h2>
               <div className="text-gray-300 space-y-4">
                 <p>
                   Our platform is not intended for children under 13 years of age. We do not knowingly collect personal information from children under 13. If we become aware that we have collected such information, we will take steps to delete it promptly.
@@ -137,7 +137,7 @@ export default function PrivacyPolicy() {
               <h2 className="text-2xl font-semibold mb-4 text-white">8. Changes to This Policy</h2>
               <div className="text-gray-300 space-y-4">
                 <p>
-                  We may update this Privacy Policy from time to time. We will notify you of any material changes by posting the new Privacy Policy on this page and updating the "Last updated" date.
+                  We may update this Privacy Policy from time to time. We will notify you of any material changes by posting the new Privacy Policy on this page and updating the &quot;Last updated&quot; date.
                 </p>
               </div>
             </section>

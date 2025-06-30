@@ -256,21 +256,21 @@ export function AdminDashboard() {
                   <div className="flex items-center space-x-4">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium">New channel created: "Physics 101"</p>
+                      <p className="text-sm font-medium">New channel created: &quot;Physics 101&quot;</p>
                       <p className="text-xs text-muted-foreground">2 hours ago</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-4">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium">Content uploaded: "Quantum Mechanics Lecture"</p>
+                      <p className="text-sm font-medium">Content uploaded: &quot;Quantum Mechanics Lecture&quot;</p>
                       <p className="text-xs text-muted-foreground">4 hours ago</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-4">
                     <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium">Poll created: "Understanding Today's Topic"</p>
+                      <p className="text-sm font-medium">Poll created: &quot;Understanding Today&apos;s Topic&quot;</p>
                       <p className="text-xs text-muted-foreground">6 hours ago</p>
                     </div>
                   </div>

@@ -235,7 +235,7 @@ export function ContentInteractionTemplates({ contentId, contentTitle, onTemplat
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Interaction Templates for "{contentTitle}"</DialogTitle>
+          <DialogTitle>Interaction Templates for &quot;{contentTitle}&quot;</DialogTitle>
           <p className="text-sm text-muted-foreground">
             Choose from pre-built interaction sets designed for educational content
           </p>

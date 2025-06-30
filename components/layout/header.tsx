@@ -19,8 +19,9 @@ export function Header() {
   const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
   const isClerkConfigured = typeof publishableKey === 'string' && !publishableKey.includes('actual-bullfrog');
   
-  const userHook = isClerkConfigured ? useUser() : null;
-  const { isSignedIn } = userHook || { isSignedIn: false };
+  // Always call the hook, but handle when Clerk isn't configured
+  const userHook = useUser();
+  const { isSignedIn } = isClerkConfigured ? userHook : { isSignedIn: false };
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 

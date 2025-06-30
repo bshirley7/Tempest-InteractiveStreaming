@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { UserButton, useUser, SignInButton } from '@clerk/nextjs';
+import { dark } from '@clerk/themes';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { 
@@ -112,6 +113,7 @@ export function Header() {
                 <UserButton 
                   afterSignOutUrl="/"
                   appearance={{
+                    baseTheme: dark,
                     elements: {
                       avatarBox: "h-8 w-8",
                       userButtonPopoverCard: "bg-zinc-900 border border-zinc-800",
@@ -124,7 +126,31 @@ export function Header() {
             ) : (
               <div className="flex items-center space-x-2">
                 {isClerkConfigured ? (
-                  <SignInButton mode="modal">
+                  <SignInButton 
+                    mode="modal"
+                    appearance={{
+                      baseTheme: dark,
+                      elements: {
+                        rootBox: "mx-auto",
+                        modalContent: "bg-zinc-900",
+                        card: "bg-zinc-900 border border-zinc-800",
+                        headerTitle: "text-white",
+                        headerSubtitle: "text-zinc-400",
+                        socialButtonsBlockButton: "bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700",
+                        formButtonPrimary: "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700",
+                        formFieldInput: "bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500",
+                        formFieldLabel: "text-zinc-300",
+                        footerActionText: "text-zinc-400",
+                        footerActionLink: "text-purple-400 hover:text-purple-300",
+                      },
+                      variables: {
+                        colorPrimary: "#a855f7",
+                        colorBackground: "#18181b",
+                        colorInputBackground: "#27272a",
+                        colorInputText: "#ffffff",
+                      }
+                    }}
+                  >
                     <Button 
                       size="sm"
                       className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white border-0"

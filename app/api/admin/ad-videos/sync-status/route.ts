@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
         errorCount++;
         
         // If video not found in Cloudflare, mark as rejected
-        if (streamError.message.includes('404') || streamError.message.includes('not found')) {
+        if ((streamError as Error).message?.includes('404') || (streamError as Error).message?.includes('not found')) {
           const { error: updateError } = await supabase
             .from('ad_videos')
             .update({

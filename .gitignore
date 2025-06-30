@@ -41,3 +41,7 @@ node_modules_old/
 
 # reference images (large files)
 docs/reference/
+
+# test and development files (not needed for production)
+/app/test/
+/scripts/

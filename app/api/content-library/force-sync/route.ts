@@ -27,6 +27,9 @@ async function isUserAdmin(clerkUserId: string): Promise<boolean> {
 
     // Check Supabase user role as fallback
     const supabase = await createClient();
+    if (!supabase) {
+      return false;
+    }
     const { data: user } = await supabase
       .from('users')
       .select('role')
@@ -95,6 +98,9 @@ export async function POST(request: NextRequest) {
         
         // Get existing video IDs from Supabase
         const supabase = await createClient();
+        if (!supabase) {
+          return NextResponse.json({ success: false, error: 'Database connection not configured' }, { status: 500 });
+        }
         const { data: existingVideos, error: existingError } = await supabase
           .from('content')
           .select('cloudflare_video_id')
@@ -125,7 +131,7 @@ export async function POST(request: NextRequest) {
         
       } catch (streamError) {
         console.error('Error calling stream API:', streamError);
-        throw new Error(`Stream API error: ${streamError.message}`);
+        throw new Error(`Stream API error: ${(streamError as Error).message || 'Unknown error'}`);
       }
       
     } else {

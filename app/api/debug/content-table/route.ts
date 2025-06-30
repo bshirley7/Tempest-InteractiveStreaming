@@ -7,7 +7,11 @@ import { createClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
+    
+    if (!supabase) {
+      return NextResponse.json({ success: false, error: 'Database connection not configured' }, { status: 500 });
+    }
     
     // First, let's see what columns exist in the content table
     console.log('Testing content table structure...');

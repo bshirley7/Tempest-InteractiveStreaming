@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
             video_id: video.id,
             cloudflare_video_id: video.cloudflare_video_id,
             status: 'error',
-            error: streamError.message,
+            error: (streamError as Error).message || 'Unknown error',
           });
         }
       }

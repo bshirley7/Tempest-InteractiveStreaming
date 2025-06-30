@@ -27,7 +27,10 @@ async function isUserAdmin(clerkUserId: string): Promise<boolean> {
     }
 
     // Check Supabase user role as fallback
-    const supabase = createClient();
+    const supabase = await createClient();
+    if (!supabase) {
+      return false;
+    }
     const { data: user } = await supabase
       .from('users')
       .select('role')

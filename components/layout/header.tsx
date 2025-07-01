@@ -5,6 +5,7 @@ import { UserButton, useUser, SignInButton } from '@clerk/nextjs';
 import { dark } from '@clerk/themes';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { 
   Settings, 
   Menu,
@@ -23,6 +24,7 @@ export function Header() {
   // Always call the hook, but handle when Clerk isn't configured
   const userHook = useUser();
   const { isSignedIn } = isClerkConfigured ? userHook : { isSignedIn: false };
+  const { isAdmin } = useAdminCheck();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -49,11 +51,15 @@ export function Header() {
     );
   }
 
-  const navigationItems = [
+  // Create navigation items dynamically based on user role
+  const baseNavigationItems = [
     { label: 'Live TV', href: '/live', icon: Zap },
     { label: 'Library', href: '/library', icon: Play },
-    { label: 'Admin', href: '/admin', icon: Settings },
   ];
+  
+  const navigationItems = isAdmin 
+    ? [...baseNavigationItems, { label: 'Admin', href: '/admin', icon: Settings }]
+    : baseNavigationItems;
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50">

@@ -4,6 +4,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { Footer } from '@/components/layout/footer';
+import { Analytics } from '@vercel/analytics/next';
 import { Inter } from 'next/font/google';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -42,6 +43,7 @@ export default function RootLayout({
               <Footer />
             </div>
             <Toaster />
+            <Analytics />
           </ThemeProvider>
         </body>
       </html>

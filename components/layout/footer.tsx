@@ -44,11 +44,11 @@ export function Footer() {
         {/* Bottom Footer */}
         <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
           <p className="text-sm text-gray-400">
-            © {currentYear} Tempest. All rights reserved.
+            © {currentYear} LaBelle XL LLC. All rights reserved.
           </p>
           
           <div className="flex items-center space-x-4 text-xs text-gray-500">
-            <span>Interactive Streaming Platform</span>
+            <span>Interactive Streaming Reimagined</span>
             <span>•</span>
             <span>Built with Next.js</span>
             <span>•</span>

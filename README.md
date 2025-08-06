@@ -1,4 +1,4 @@
-# StreamFlix - Interactive Streaming Platform
+# Tempest - Interactive Streaming Platform
 
 A next-generation streaming platform built with Next.js 14, featuring AI-generated content, real-time interactions, and comprehensive content management capabilities.
 
